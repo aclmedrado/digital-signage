@@ -43,7 +43,26 @@ Diretório:
 
 /home/administrador/digital-signage
 
+## Infraestrutura confirmada
+
+Servidor:
+
+- Hostname: utilities
+- IP principal: 10.4.254.202
+- Sistema operacional: Ubuntu 26.04.1 LTS
+- Arquitetura: x86_64
+- Docker Engine: 29.8.1
+- Docker Compose: 5.5.1
+- containerd: 2.3.6
+- Serviço Docker: ativo e habilitado no boot
+- UFW: inativo
+
+O Docker foi instalado através do repositório oficial da Docker.
+
+O usuário `administrador` não pertence deliberadamente ao grupo `docker`.
+Operações administrativas do Docker devem utilizar `sudo`.
+
 ## Próxima etapa
 
-Criar o ambiente Docker e uma aplicação FastAPI mínima com endpoint de
-healthcheck.
+Publicar o repositório no GitHub e, em seguida, implementar o primeiro
+container da aplicação com FastAPI e endpoint de healthcheck.
