@@ -1,0 +1,58 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application data
+data/*
+!data/.gitkeep
+
+# Uploaded media
+media/images/*
+!media/images/.gitkeep
+
+media/videos/*
+!media/videos/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.bak
+*.backup
+*.tar
+*.tar.gz
+*.zip
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets / keys
+*.pem
+*.key
+*.crt
+credentials/
+secrets/
