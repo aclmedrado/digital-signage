@@ -69,4 +69,4 @@ Consulte:
 
 ## Licença
 
-A licença será definida antes da primeira publicação pública.
+Este projeto é distribuído sob a licença MIT. Consulte `LICENSE`.
