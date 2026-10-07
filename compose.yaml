@@ -2,12 +2,16 @@ name: digital-signage
 
 services:
   signage-app:
-    image: digital-signage:etapa002
+    image: digital-signage:etapa003
     build: .
     container_name: digital-signage-app
     restart: unless-stopped
     ports:
       - "${SIGNAGE_BIND_IP:-127.0.0.1}:${SIGNAGE_PORT:-8080}:8000"
+    environment:
+      DATABASE_URL: "${DATABASE_URL:-sqlite:////app/data/signage.db}"
+    volumes:
+      - signage-data:/app/data
     healthcheck:
       test:
         - CMD
@@ -18,3 +22,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  signage-data:

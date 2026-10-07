@@ -50,10 +50,13 @@ Diretório:
 
 ## Estado do projeto
 
-A ETAPA 002 implementa uma aplicação FastAPI mínima com GET / e GET /health,
-Dockerfile, Compose e dois testes pytest. A validação operacional foi concluída:
-2 testes aprovados, container healthy e endpoints com HTTP 200 na implantação
-em 10.4.254.202:8080; não há banco, upload ou player.
+A ETAPA 003 adiciona SQLite via SQLAlchemy 2.x e cadastro de telas por API,
+com criação, listagem, consulta e atualização parcial em `/api/screens`.
+`DATABASE_URL` usa por padrão `sqlite:////app/data/signage.db`, persistido em
+volume Docker nomeado. A ETAPA 003 está concluída e validada operacionalmente
+pelo operador: 23 testes aprovados, container healthy e persistência confirmada
+após restart, recriação, down/up sem -v e rebuild. Não há interface
+administrativa, upload ou player.
 
 Consulte:
 
@@ -88,7 +91,7 @@ sudo docker compose stop
 
 Os endpoints retornam, respectivamente,
 `{"name": "Digital Signage", "status": "running"}` e `{"status": "ok"}`.
-As dependências são instaladas somente na imagem. Não é necessário criar .env.
+As dependências são instaladas somente na imagem. A configuração real usa .env não versionado; consulte .env.example.
 O binding padrão é 127.0.0.1:8080, acessível somente no host. SIGNAGE_BIND_IP
 e SIGNAGE_PORT permitem configurar outra interface e porta; veja .env.example
 e docs/DEPLOYMENT.md. Ajuste as URLs acima quando alterar esses valores.

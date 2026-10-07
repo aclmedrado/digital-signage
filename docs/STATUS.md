@@ -1,10 +1,12 @@
 # Status do projeto
 
-Última atualização: 2026-10-06
+Última atualização: 2026-10-07
 
 ## Fase atual
 
-ETAPA 002 implementada e validada operacionalmente com sucesso.
+ETAPA 003 concluída e validada operacionalmente pelo operador: testes em
+container, API, permissões e persistência SQLite confirmados com sucesso.
+A ETAPA 002 permanece validada. A ETAPA 004 não foi iniciada.
 
 ## Implementado
 
@@ -20,14 +22,14 @@ ETAPA 002 implementada e validada operacionalmente com sucesso.
 - Compose com um serviço signage-app, restart unless-stopped e healthcheck;
 - binding configurável por SIGNAGE_BIND_IP e SIGNAGE_PORT, com padrão
   127.0.0.1:8080 para porta interna 8000;
-- dois testes pytest para os códigos HTTP e respostas JSON;
+- testes pytest para os endpoints existentes e cadastro de telas;
+- SQLite via SQLAlchemy 2.x, volume persistente e inicialização idempotente;
+- modelo Screen e API de criação, listagem, consulta e atualização parcial;
 - documentação de implantação, operações e ADR 0002 aceito.
 
 ## Ainda não implementado
 
-- banco SQLite;
 - painel administrativo;
-- cadastro de telas;
 - upload de imagens;
 - player web;
 - integração com TV Box;
@@ -68,8 +70,8 @@ Operações administrativas do Docker devem utilizar `sudo`.
 
 ## Próxima etapa
 
-Planejar persistência SQLite na etapa seguinte, sem iniciar sua implementação
-nem aceitar ADR 0003 nesta atualização documental.
+Planejar a próxima etapa do MVP após a auditoria do diff pelo operador.
+A ETAPA 004 não será iniciada nesta atualização documental.
 
 ## Registro da ETAPA 002
 
@@ -156,3 +158,125 @@ Não há pendência de validação operacional da ETAPA 002 nos resultados
 informados. SQLite e demais funcionalidades continuam não implementados.
 Próximo passo recomendado: planejar a etapa de persistência, sem iniciá-la aqui.
 Nenhum commit ou push realizado nesta atualização.
+
+## Registro da ETAPA 003
+
+Estado inicial: diretório oficial confirmado; leituras obrigatórias integrais
+concluídas; main limpa e sincronizada com origin/main. ETAPA 002 validada pelo
+operador; ADR 0003 já aceito. Inspeção dos arquivos concluída antes de editar.
+
+Criados: app/config.py, app/database.py, app/models.py, app/schemas.py,
+app/routes/__init__.py, app/routes/screens.py, tests/conftest.py e
+tests/test_screens.py.
+Alterados: app/main.py, requirements.txt, Dockerfile, compose.yaml,
+.dockerignore, .env.example, README.md, docs/ARCHITECTURE.md,
+docs/DEPLOYMENT.md, docs/OPERATIONS.md e docs/STATUS.md.
+
+Implementado: Screen, POST/GET /api/screens e GET/PATCH /api/screens/{screen_id},
+slug único/validado, conflito 409, ausentes 404, atualização parcial e active;
+timestamps UTC gerados pelo servidor. GET / e GET /health preservados.
+SQLAlchemy 2.0.40 adicionado; criação idempotente de tabelas no lifespan.
+DATABASE_URL padrão sqlite:////app/data/signage.db; volume nomeado signage-data;
+imagem etapa003; diretório /app/data preparado para UID/GID 10001.
+Decisão: volume nomeado para portabilidade e permissões não-root, sem bind mount,
+chmod 777 ou alteração das permissões de /app para cache pytest.
+
+Testes implementados: 23 casos (incluindo parametrizações), com SQLite temporário,
+engine e sessões isolados do banco de produção. Cobrem endpoints existentes,
+CRUD permitido, ativação/desativação, conflitos na criação/atualização,
+validação, campos imutáveis, nulos e persistência entre inicializações.
+Na implementação inicial, o agente não executou pytest, build, inicialização,
+logs ou persistência real em Docker. A validação posterior pelo operador foi
+concluída com sucesso e está registrada na seção seguinte.
+Verificações da implementação inicial: sintaxe dos 12 arquivos Python por ast.parse aprovada;
+docker compose config --quiet aprovado sem acesso ao daemon.
+Inspeção sudo docker compose ps falhou por restrição "no new privileges".
+Não houve tentativa de contornar sudo. Comandos manuais em DEPLOYMENT/OPERATIONS.
+Revisão integral do diff e dos arquivos novos concluída sem alterações fora
+do escopo; git diff --check aprovado.
+
+Os testes em container, permissões do volume, estado healthy, API e
+persistência foram posteriormente confirmados pelo operador, conforme abaixo.
+Nenhuma alteração fora do diretório oficial, instalação de dependências no host,
+alteração de firewall/SSH/sudoers/grupos/Docker global, git add, commit ou push.
+Sem interface administrativa, autenticação, upload, player, mídia, agendamento
+ou Alembic. Próximo passo: auditar o diff e planejar a próxima etapa do MVP,
+sem implementá-la nesta atualização.
+
+## Validação operacional da ETAPA 003
+
+ETAPA 003 concluída e validada com sucesso, conforme resultados reais
+informados pelo operador e registrados em 2026-10-07. Os comandos e testes
+operacionais abaixo foram executados pelo operador; não foram reexecutados
+pelo agente nesta atualização documental.
+
+### Docker e testes automatizados
+
+- `sudo docker compose config`: aprovado;
+- `sudo docker compose build`: aprovado;
+- imagem construída: `digital-signage:etapa003`;
+- `sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider`:
+  `23 passed, 1 warning`, sem falhas;
+- warning: `DeprecationWarning` proveniente de Starlette/AnyIO; não impediu
+  a aprovação dos testes.
+
+### Container e armazenamento
+
+- serviço: `signage-app`;
+- container: `digital-signage-app`, estado `healthy`;
+- binding: `10.4.254.202:8080 -> 8000/tcp`;
+- usuário efetivo: `uid=10001(signage) gid=10001(signage)`;
+- `/app/data` pertence a `signage:signage`;
+- `/app/data/signage.db` criado com sucesso no volume nomeado `signage-data`.
+
+### Endpoints base e API de telas
+
+| Requisição | Resultado confirmado |
+|---|---|
+| GET `/` | HTTP 200; `{"name":"Digital Signage","status":"running"}` |
+| GET `/health` | HTTP 200; `{"status":"ok"}` |
+| POST `/api/screens` | HTTP 201; TV Piloto criada, `id=1`, `slug=tv-piloto` |
+| GET `/api/screens` | HTTP 200; tela listada corretamente |
+| GET `/api/screens/1` | HTTP 200 |
+| PATCH `/api/screens/1` alterando `location` | HTTP 200; `updated_at` atualizado |
+| PATCH `/api/screens/1` com `active=false` | HTTP 200 |
+| PATCH `/api/screens/1` com `active=true` | HTTP 200 |
+| Tentativa com slug duplicado | HTTP 409; `{"detail":"Slug já cadastrado"}` |
+| Tentativa com slug inválido | HTTP 422 |
+| GET `/api/screens/999999` | HTTP 404; `{"detail":"Tela não encontrada"}` |
+
+### Persistência operacional
+
+O registro `id=1` permaneceu disponível após cada um dos ciclos confirmados:
+
+1. `sudo docker compose restart signage-app`;
+2. `sudo docker compose up -d --force-recreate`;
+3. `sudo docker compose down` seguido de `sudo docker compose up -d`, sem `-v`;
+4. novo `sudo docker compose build` seguido de
+   `sudo docker compose up -d --force-recreate`.
+
+Após o último ciclo, o container voltou ao estado `healthy`, o registro
+continuou disponível e os mesmos `created_at` e `updated_at` foram preservados.
+A persistência SQLite da ETAPA 003 está validada operacionalmente.
+
+### Registro desta atualização documental
+
+Nenhum arquivo criado. Alterados somente README.md, docs/STATUS.md,
+docs/DEPLOYMENT.md, docs/OPERATIONS.md e docs/ARCHITECTURE.md para registrar a
+conclusão e remover referências a validações operacionais ainda pendentes.
+Decisão: registrar os resultados fornecidos pelo operador, preservando os
+procedimentos úteis para futuras implantações e revalidações.
+
+Verificação documental: diff revisado e `git diff --check` aprovado.
+Os testes operacionais não foram reexecutados nesta atualização; seus
+resultados são os informados pelo operador. Logs detalhados não foram
+fornecidos nesta validação.
+
+Problema encontrado: um DeprecationWarning de Starlette/AnyIO, sem falhas de
+teste; nenhuma correção de código ou dependências realizada nesta atualização.
+Não há pendência de validação operacional da ETAPA 003 nos resultados
+informados. Próximo passo recomendado: auditoria do diff pelo operador e
+planejamento da próxima etapa do MVP, sem iniciar a ETAPA 004 aqui.
+Nenhuma funcionalidade implementada, alteração de código da aplicação,
+mudança no ambiente do servidor, alteração fora do diretório oficial,
+git add, commit ou push nesta atualização.

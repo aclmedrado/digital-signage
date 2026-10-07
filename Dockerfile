@@ -13,6 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY app/ ./app/
 COPY tests/ ./tests/
 
+RUN mkdir -p /app/data && chown signage:signage /app/data
+
 USER signage
 EXPOSE 8000
 
