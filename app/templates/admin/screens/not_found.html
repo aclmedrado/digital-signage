@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Tela não encontrada{% endblock %}
+{% block content %}
+  <div class="empty-state">
+    <h1>Tela não encontrada</h1>
+    <p>Não há uma tela cadastrada com esse identificador.</p>
+    <a class="button" href="{{ url_for('admin_screens') }}">Voltar para telas</a>
+  </div>
+{% endblock %}

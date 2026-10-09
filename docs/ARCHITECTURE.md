@@ -35,7 +35,7 @@ Compose e restart unless-stopped. Os testes pytest são executados na imagem.
 Build, dois testes em container e implantação foram validados operacionalmente.
 O container está healthy, com binding 10.4.254.202:8080 para a porta interna 8000
 e ambos os endpoints retornando HTTP 200, conforme docs/STATUS.md.
-Interface administrativa, gerenciamento de mídia e player continuam previstos
+Gerenciamento de mídia e player continuam previstos
 para o MVP.
 
 
@@ -70,6 +70,49 @@ A propriedade signage:signage de /app/data e a criação de signage.db foram
 confirmadas. O registro id=1 persistiu após restart, recriação, down/up sem -v
 e rebuild; created_at e updated_at foram preservados após rebuild/recriação.
 Os resultados completos estão em docs/STATUS.md.
+
+## Implementação da ETAPA 004
+
+A interface administrativa é renderizada no servidor com FastAPI e Jinja2,
+conforme ADR 0004, no mesmo serviço signage-app. As rotas ficam em
+app/routes/admin/screens.py; os templates em app/templates usam base.html
+para compartilhar cabeçalho e navegação. StaticFiles atende o CSS local em
+/static/admin.css. Não há JavaScript, CDN, frontend separado ou novo serviço.
+
+GET /admin redireciona para /admin/screens. A listagem é ordenada por id;
+GET /admin/screens/new exibe criação e GET /admin/screens/{screen_id}/edit
+exibe edição. POST /admin/screens cria uma tela ativa;
+POST /admin/screens/{screen_id}/edit altera name, slug e location, preservando
+active. POST /admin/screens/{screen_id}/toggle alterna active separadamente.
+Não há exclusão. Operações bem-sucedidas retornam 303 para /admin/screens,
+com parâmetro result para uma mensagem de confirmação escolhida de uma lista
+fixa. O GET seguinte evita reenvio de formulário ao atualizar a página.
+
+API e interface compartilham Screen, ScreenCreate, ScreenUpdate, get_session
+e funções simples em app/services/screens.py para busca, listagem, criação,
+atualização e commit com rollback em conflito. Não há chamadas HTTP internas
+nem framework de serviços. updated_at continua gerado no servidor em UTC.
+Os erros de validação são apresentados em HTML com status 422 e preservação
+dos valores; slug duplicado retorna o formulário em HTML com status 409.
+Telas ausentes nas rotas administrativas retornam página HTML com status 404.
+O pattern do formulário é obtido do schema existente, sem uma segunda regra
+de slug. Jinja2 mantém o escape automático dos valores nos templates HTML.
+
+As rotas JSON existentes, /health e seu healthcheck foram preservados.
+SQLite, DATABASE_URL, esquema, volume signage-data e usuário não-root não
+mudaram. Jinja2 e python-multipart são instalados somente na imagem; o
+.dockerignore inclui os templates e o CSS no contexto de build. A imagem
+definida no Compose é digital-signage:etapa004.
+
+Não há autenticação ou autorização na interface nem na API. O uso nesta fase
+é restrito ao ambiente interno controlado, sem exposição direta à Internet. Os testes
+administrativos reutilizam o banco temporário isolado dos testes existentes.
+A ETAPA 004 foi concluída e validada operacionalmente, conforme resultados
+fornecidos pelo operador: build aprovado, imagem digital-signage:etapa004,
+66 testes aprovados, container healthy em 10.4.254.202:8080 e oito testes
+pelo navegador aprovados. GET /, /health e /api/screens retornaram HTTP 200,
+e TV Piloto permaneceu no SQLite. Resultados completos em docs/STATUS.md;
+essas validações não foram reexecutadas nesta atualização documental.
 
 ## TV Box
 

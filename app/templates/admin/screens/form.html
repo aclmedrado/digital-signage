@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar tela' if screen_id is not none else 'Nova tela' }}{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div>
+      <h1>{{ 'Editar tela' if screen_id is not none else 'Nova tela' }}</h1>
+      <p>Preencha os dados abaixo. Todos os campos são obrigatórios.</p>
+    </div>
+  </div>
+  <div class="form-panel">
+    {% if errors %}
+      <p class="notice error" role="alert">Não foi possível salvar. Confira os campos indicados.</p>
+    {% endif %}
+    <form method="post"
+          action="{{ url_for('admin_update_screen', screen_id=screen_id) if screen_id is not none else url_for('admin_create_screen') }}">
+      <div class="field">
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name" value="{{ values.name }}" required maxlength="200"
+               {% if errors.name %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+        {% if errors.name %}<p id="name-error" class="field-error">{{ errors.name }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="slug">Slug</label>
+        <input type="text" id="slug" name="slug" value="{{ values.slug }}" required maxlength="200"
+               pattern="{{ slug_pattern }}" autocapitalize="none" spellcheck="false"
+               aria-describedby="slug-help{% if errors.slug %} slug-error{% endif %}"
+               {% if errors.slug %}aria-invalid="true"{% endif %}>
+        <p id="slug-help" class="field-help">Use letras minúsculas sem acentos, números e hífens entre palavras. Exemplo: tv-recepcao.</p>
+        {% if errors.slug %}<p id="slug-error" class="field-error">{{ errors.slug }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="location">Localização</label>
+        <input type="text" id="location" name="location" value="{{ values.location }}" required maxlength="200"
+               {% if errors.location %}aria-invalid="true" aria-describedby="location-error"{% endif %}>
+        {% if errors.location %}<p id="location-error" class="field-error">{{ errors.location }}</p>{% endif %}
+      </div>
+      {% if screen_id is none %}<p>A tela será cadastrada como ativa.</p>{% endif %}
+      <div class="form-actions">
+        <button class="button" type="submit">{{ 'Salvar alterações' if screen_id is not none else 'Cadastrar tela' }}</button>
+        <a class="button secondary" href="{{ url_for('admin_screens') }}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

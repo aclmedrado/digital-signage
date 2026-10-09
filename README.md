@@ -55,8 +55,18 @@ com criação, listagem, consulta e atualização parcial em `/api/screens`.
 `DATABASE_URL` usa por padrão `sqlite:////app/data/signage.db`, persistido em
 volume Docker nomeado. A ETAPA 003 está concluída e validada operacionalmente
 pelo operador: 23 testes aprovados, container healthy e persistência confirmada
-após restart, recriação, down/up sem -v e rebuild. Não há interface
-administrativa, upload ou player.
+após restart, recriação, down/up sem -v e rebuild.
+
+A ETAPA 004 implementa o painel administrativo inicial em `/admin`, com
+listagem, cadastro, edição, ativação e desativação de telas usando FastAPI,
+Jinja2 e formulários HTML, sem JavaScript. A etapa está concluída e validada
+operacionalmente, conforme resultados fornecidos pelo operador: 66 testes
+aprovados, container healthy, TV Piloto preservada no SQLite e os oito testes
+pelo navegador aprovados. Acesso no ambiente atual:
+`http://10.4.254.202:8080/admin`. Resultados e warnings em docs/STATUS.md.
+O painel e a API ainda não possuem autenticação ou autorização: manter a
+aplicação somente em ambiente interno controlado, sem exposição pública.
+Não há upload ou player.
 
 Consulte:
 

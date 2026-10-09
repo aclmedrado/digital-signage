@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Telas{% endblock %} | Digital Signage</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/admin.css') }}">
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+  <header class="site-header">
+    <div class="container header-content">
+      <a class="brand" href="{{ url_for('admin_screens') }}">Digital Signage</a>
+      <nav aria-label="Navegação principal">
+        <a href="{{ url_for('admin_screens') }}">Telas</a>
+      </nav>
+    </div>
+  </header>
+  <main id="conteudo" class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="container site-footer">Administração de telas</footer>
+</body>
+</html>

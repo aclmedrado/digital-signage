@@ -44,6 +44,59 @@ permissão de escrita em /app/.pytest_cache pelo usuário não-root. Na validaç
 operacional da ETAPA 002, esse warning não afetou os dois testes aprovados.
 Não alterar permissões de /app para resolver o warning.
 
+## Interface administrativa de telas — ETAPA 004
+
+ETAPA 004 concluída e validada operacionalmente, conforme resultados
+fornecidos pelo operador: config e build aprovados, imagem
+digital-signage:etapa004, container digital-signage-app healthy em
+10.4.254.202:8080 e logs de inicialização sem erros. Os resultados não foram
+reexecutados nesta atualização documental; registro completo em docs/STATUS.md.
+Para futuras implantações ou revalidações, siga os procedimentos de inspeção,
+build e testes de docs/DEPLOYMENT.md, preservando o binding, o volume e a
+configuração existente. Não contornar bloqueios de sudo nem alterar permissões.
+
+Acesse no navegador:
+
+- `http://10.4.254.202:8080/admin`;
+- `http://10.4.254.202:8080/admin/screens`.
+
+Ajuste IP e porta conforme a implantação. O painel permite listar, cadastrar,
+editar, ativar e desativar telas; não há exclusão. Cadastro e edição solicitam
+nome, slug e localização. Novas telas ficam ativas; ativação e desativação
+são ações separadas na listagem. Sucesso redireciona por HTTP 303 para a
+listagem com uma mensagem; erros mantêm os valores no formulário HTML.
+
+O painel e a API ainda não possuem autenticação ou autorização. Utilizar
+somente no ambiente interno controlado; não expor a aplicação diretamente à Internet.
+
+Comandos para futuras implantações ou revalidações, no terminal do operador:
+
+```bash
+sudo docker compose config
+sudo docker compose build
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+sudo docker compose up -d
+sudo docker compose ps
+sudo docker compose logs --tail=100 signage-app
+```
+
+A suíte de 66 testes (23 existentes e 43 administrativos) passou na validação
+do operador: 66 passed, 3 warnings, sem falhas. Dois warnings de cache do
+pytest decorreram de erro de digitação no argumento utilizado; um
+DeprecationWarning veio de Starlette/AnyIO. Para futuras execuções, use
+exatamente o comando pytest acima, com -p no:cacheprovider, sem alterar
+permissões. Os testes usam SQLite temporário isolado do banco real.
+
+O operador confirmou HTTP 200 em GET /, /health e /api/screens, preservação
+de TV Piloto no SQLite e aprovação dos oito testes pelo navegador: painel
+com TV Piloto, formulário de nova tela, cadastro com slug diferente, edição
+de nome e localização, ativação/desativação, mensagem de slug duplicado,
+refresh sem duplicação e legibilidade em computador e tablet/janela estreita.
+
+Para futuras revalidações, aguarde healthy, confira endpoints e logs e repita
+o fluxo pelo navegador. Confira também erros de formulário, CSS local e
+preservação dos valores preenchidos. Registre novos resultados em docs/STATUS.md.
+
 ## Banco SQLite e persistência
 
 O banco configurado por DATABASE_URL reside, por padrão, no volume signage-data

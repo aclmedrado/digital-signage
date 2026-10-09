@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Telas{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div>
+      <h1>Telas</h1>
+      <p>Cadastre e gerencie as telas da sua instituição.</p>
+    </div>
+    <a class="button" href="{{ url_for('admin_new_screen') }}">Nova tela</a>
+  </div>
+  {% if notice %}
+    <p class="notice success" role="status">{{ notice }}</p>
+  {% endif %}
+  {% if screens %}
+    <div class="table-container" tabindex="0" role="region" aria-label="Telas cadastradas">
+      <table>
+        <caption class="visually-hidden">Telas cadastradas e ações disponíveis</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nome</th>
+            <th scope="col">Slug</th>
+            <th scope="col">Localização</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for screen in screens %}
+            <tr>
+              <th scope="row">{{ screen.name }}</th>
+              <td>{{ screen.slug }}</td>
+              <td>{{ screen.location }}</td>
+              <td>
+                <span class="badge {{ 'active' if screen.active else 'inactive' }}">
+                  {{ 'Ativa' if screen.active else 'Inativa' }}
+                </span>
+              </td>
+              <td>
+                <div class="row-actions">
+                  <a class="button secondary" href="{{ url_for('admin_edit_screen', screen_id=screen.id) }}"
+                     aria-label="Editar {{ screen.name }}">Editar</a>
+                  <form method="post" action="{{ url_for('admin_toggle_screen', screen_id=screen.id) }}">
+                    <button class="button secondary" type="submit"
+                            aria-label="{{ 'Desativar' if screen.active else 'Ativar' }} {{ screen.name }}">
+                      {{ 'Desativar' if screen.active else 'Ativar' }}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h2>Nenhuma tela cadastrada</h2>
+      <p>Selecione Nova tela para cadastrar a primeira.</p>
+    </div>
+  {% endif %}
+{% endblock %}

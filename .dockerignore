@@ -4,5 +4,13 @@
 !app/
 !app/**/*.py
 !app/routes/
+!app/routes/admin/
+!app/services/
+!app/templates/
+!app/templates/admin/
+!app/templates/admin/screens/
+!app/templates/**/*.html
+!app/static/
+!app/static/*.css
 !tests/
 !tests/**/*.py

@@ -39,7 +39,12 @@ curl --fail --noproxy '*' http://127.0.0.1:8080/
 curl --fail --noproxy '*' http://127.0.0.1:8080/health
 ```
 
-A imagem desta etapa é digital-signage:etapa003. O único serviço signage-app executa como
+A imagem atual é digital-signage:etapa004, com build e validação operacional
+aprovados conforme resultados fornecidos pelo operador. O container
+digital-signage-app foi confirmado healthy em 10.4.254.202:8080, com
+inicialização normal e logs sem erros; 66 testes passaram, com três warnings
+descritos em docs/STATUS.md. Esses resultados não foram reexecutados nesta
+atualização documental. O único serviço signage-app executa como
 UID/GID 10001, com porta interna 8000 e binding configurável, por padrão
 127.0.0.1:8080. Ajuste as URLs de teste ao IP e à porta escolhidos. O healthcheck usa Python
 para verificar HTTP 200 e o JSON de /health. Aguarde o estado healthy.
