@@ -66,7 +66,34 @@ pelo navegador aprovados. Acesso no ambiente atual:
 `http://10.4.254.202:8080/admin`. Resultados e warnings em docs/STATUS.md.
 O painel e a API ainda não possuem autenticação ou autorização: manter a
 aplicação somente em ambiente interno controlado, sem exposição pública.
-Não há upload ou player.
+
+A ETAPA 005 implementa a biblioteca em `/admin/media`, priorizando MP4/H.264,
+com upload, catálogo, metadados e pré-visualização pelo navegador. Suporta
+também JPG/JPEG, PNG, WebP e GIF, preservando animações. SVG é rejeitado até
+existir tratamento seguro. A etapa está concluída e validada operacionalmente,
+conforme resultados fornecidos pelo operador: config e build aprovados,
+149 testes aprovados, 1 warning de depreciação Starlette/AnyIO, container
+healthy e os 14 itens do checklist pelo navegador aprovados. HTTP Range
+206/416 e persistência após restart e force-recreate foram confirmados.
+Não há player nem playlists; a compatibilidade com TV Boxes continua pendente.
+
+Perfil MP4: uma trilha H.264 de 8 bits `yuv420p`, até 1920 × 1080 e 30 FPS,
+com uma trilha AAC opcional. Não há transcodificação. Limites padrão:
+250 MiB por vídeo, 10 MiB por imagem, 20.000.000 pixels por quadro,
+100 quadros e 100.000.000 pixels acumulados por imagem. As variáveis de
+`.env.example` permitem ajustar os limites; MiB significa 1024 × 1024 bytes.
+Os arquivos ficam em `signage-media:/app/media`; o banco permanece em
+`signage-data:/app/data`. A imagem instala Pillow e o pacote Debian que
+fornece ffprobe, sem dependências no host.
+
+O upload ainda não possui autenticação, autorização ou proteção CSRF.
+Usar somente com operadores confiáveis em ambiente restrito. Esses controles
+são obrigatórios na ETAPA 006, antes da liberação institucional; não expor
+à Internet. O operador decidiu manter temporariamente `10.4.254.202:8080`
+durante os testes, como risco temporariamente aceito. Esse binding não
+constitui proteção de acesso nem autorização para liberação institucional.
+Consulte os resultados em `docs/STATUS.md` e os procedimentos e backup em
+`docs/OPERATIONS.md`.
 
 Consulte:
 

@@ -13,12 +13,13 @@
       <a class="brand" href="{{ url_for('admin_screens') }}">Digital Signage</a>
       <nav aria-label="Navegação principal">
         <a href="{{ url_for('admin_screens') }}">Telas</a>
+        <a href="{{ url_for('admin_media') }}">Mídias</a>
       </nav>
     </div>
   </header>
   <main id="conteudo" class="container">
     {% block content %}{% endblock %}
   </main>
-  <footer class="container site-footer">Administração de telas</footer>
+  <footer class="container site-footer">Administração de telas e mídias</footer>
 </body>
 </html>

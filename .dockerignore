@@ -9,6 +9,7 @@
 !app/templates/
 !app/templates/admin/
 !app/templates/admin/screens/
+!app/templates/admin/media/
 !app/templates/**/*.html
 !app/static/
 !app/static/*.css

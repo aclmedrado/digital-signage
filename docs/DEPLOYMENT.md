@@ -39,17 +39,19 @@ curl --fail --noproxy '*' http://127.0.0.1:8080/
 curl --fail --noproxy '*' http://127.0.0.1:8080/health
 ```
 
-A imagem atual é digital-signage:etapa004, com build e validação operacional
-aprovados conforme resultados fornecidos pelo operador. O container
-digital-signage-app foi confirmado healthy em 10.4.254.202:8080, com
-inicialização normal e logs sem erros; 66 testes passaram, com três warnings
-descritos em docs/STATUS.md. Esses resultados não foram reexecutados nesta
-atualização documental. O único serviço signage-app executa como
+A imagem atual é digital-signage:etapa005, construída e validada operacionalmente
+pelo operador: config/build aprovados, 149 testes aprovados, 1 warning de
+depreciação Starlette/AnyIO e nenhuma falha. O container digital-signage-app
+está healthy em 10.4.254.202:8080, com inicialização normal e sem erros nos
+logs apresentados; resultados completos em docs/STATUS.md. Esses resultados
+foram fornecidos pelo operador, sem reexecução nesta atualização documental.
+O único serviço signage-app executa como
 UID/GID 10001, com porta interna 8000 e binding configurável, por padrão
 127.0.0.1:8080. Ajuste as URLs de teste ao IP e à porta escolhidos. O healthcheck usa Python
 para verificar HTTP 200 e o JSON de /health. Aguarde o estado healthy.
 
-O banco fica no volume nomeado signage-data em /app/data. O Compose gerencia
+O banco fica no volume nomeado signage-data em /app/data e os arquivos de
+mídia em signage-media:/app/media. O Compose gerencia
 somente a rede própria do projeto; não alterar configurações globais do Docker.
 
 A ETAPA 002 foi validada operacionalmente com a imagem digital-signage:etapa002,
@@ -102,3 +104,36 @@ Use o id retornado pelo POST nas consultas GET /api/screens/{id} e PATCH
 Exemplo de atualização: PATCH com {"active":false}, seguido de GET.
 Consulte docs/OPERATIONS.md para repetir a verificação de persistência real,
 já concluída com sucesso nesta etapa.
+
+## Implantação da biblioteca — ETAPA 005
+
+ETAPA 005 implantada e validada com sucesso pelo operador. Os 14 itens do
+checklist pelo navegador, imagens e vídeos MP4 H.264 reais, metadados,
+Range 206/416, regressão e persistência após restart/force-recreate foram
+aprovados. TV Piloto e TV do Pátio foram preservadas. O bloqueio sudo da
+implementação inicial permanece apenas como histórico em docs/STATUS.md;
+os resultados operacionais foram fornecidos pelo operador.
+
+O operador decidiu manter temporariamente 10.4.254.202:8080 durante os testes,
+como risco temporariamente aceito. O painel, API e upload não possuem
+autenticação, autorização ou CSRF: esse binding não é proteção de acesso
+nem autorização para liberação institucional. Os controles são obrigatórios
+na ETAPA 006, antes dessa liberação; não expor à Internet.
+
+Antes desta implantação, o operador criou o backup local do SQLite anterior
+à ETAPA 005 em /home/administrador/signage-backups/signage-before-005.db.
+Esse arquivo não comprova backup conjunto de banco e mídias nem restauração.
+Para futuras implantações, após construir a imagem e antes de recriar o
+serviço, faça backup consistente dos dois volumes conforme docs/OPERATIONS.md.
+Preserve signage-data e DATABASE_URL. A imagem prepara /app/media para
+UID/GID 10001; o volume novo signage-media recebe essas
+permissões no primeiro uso. Não alterar volumes existentes ou usar chmod 777.
+O startup cria media_assets sem modificar screens. Os limites configuráveis
+e o perfil MP4 estão em README.md e .env.example; confira também espaço
+disponível antes dos uploads.
+
+Para futuras implantações ou revalidações, execute as inspeções e os comandos
+Docker acima no terminal do operador, confira healthy/logs, regressão e o
+checklist em docs/OPERATIONS.md. Registre novos resultados em docs/STATUS.md.
+Não instalar Pillow/FFmpeg no host para testar. A compatibilidade com TV Boxes
+continua pendente; a ETAPA 006 não foi iniciada nesta atualização documental.

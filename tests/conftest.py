@@ -2,8 +2,21 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
+from app.config import MediaSettings, get_media_settings
 from app.database import get_session, make_engine
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def isolated_media(tmp_path):
+    directory = tmp_path / "media"
+    directory.mkdir()
+    settings = MediaSettings(directory=directory)
+    app.dependency_overrides[get_media_settings] = lambda: settings
+    try:
+        yield settings
+    finally:
+        app.dependency_overrides.pop(get_media_settings, None)
 
 
 @pytest.fixture(autouse=True)

@@ -53,6 +53,15 @@ input[aria-invalid="true"] { border-color: #a52a2a; }
 .visually-hidden, .skip-link:not(:focus) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .skip-link:focus { position: fixed; top: 8px; left: 8px; padding: 12px; background: white; z-index: 1; }
 
+.media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; }
+.media-card { background: white; border: 1px solid #d6dfe8; border-radius: 8px; padding: 24px; overflow-wrap: anywhere; }
+.media-card h2 { margin-top: 0; }
+.media-card dl { margin-block: 16px; }
+.media-card dt { font-weight: 600; }
+.media-card dd { margin: 0 0 8px; }
+.media-card img, .media-card video { display: block; width: 100%; max-height: 320px; object-fit: contain; margin-top: 16px; }
+.media-card summary { cursor: pointer; min-height: 44px; padding-block: 10px; color: #15568b; }
+
 @media (max-width: 700px) {
   .container { width: calc(100% - 24px); }
   main { padding-block: 24px; }

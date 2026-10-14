@@ -35,8 +35,8 @@ Compose e restart unless-stopped. Os testes pytest são executados na imagem.
 Build, dois testes em container e implantação foram validados operacionalmente.
 O container está healthy, com binding 10.4.254.202:8080 para a porta interna 8000
 e ambos os endpoints retornando HTTP 200, conforme docs/STATUS.md.
-Gerenciamento de mídia e player continuam previstos
-para o MVP.
+O player continua previsto para o MVP. A biblioteca de mídias é implementada
+na ETAPA 005, conforme seção específica abaixo.
 
 
 ## Implementação da ETAPA 003
@@ -102,7 +102,8 @@ As rotas JSON existentes, /health e seu healthcheck foram preservados.
 SQLite, DATABASE_URL, esquema, volume signage-data e usuário não-root não
 mudaram. Jinja2 e python-multipart são instalados somente na imagem; o
 .dockerignore inclui os templates e o CSS no contexto de build. A imagem
-definida no Compose é digital-signage:etapa004.
+dessa etapa era digital-signage:etapa004; a configuração atual passa a
+digital-signage:etapa005.
 
 Não há autenticação ou autorização na interface nem na API. O uso nesta fase
 é restrito ao ambiente interno controlado, sem exposição direta à Internet. Os testes
@@ -113,6 +114,97 @@ fornecidos pelo operador: build aprovado, imagem digital-signage:etapa004,
 pelo navegador aprovados. GET /, /health e /api/screens retornaram HTTP 200,
 e TV Piloto permaneceu no SQLite. Resultados completos em docs/STATUS.md;
 essas validações não foram reexecutadas nesta atualização documental.
+
+## Implementação da ETAPA 005
+
+Conforme ADR 0005, `MediaAsset` em `media_assets` unifica vídeos e imagens.
+Campos: id, title (1–200 caracteres), kind (video/image), original_filename
+(até 255 caracteres, somente exibição), stored_filename (UUID único),
+mime_type validado, size_bytes positivo, width/height positivos,
+duration_seconds, video_codec, audio_codec e created_at UTC. Metadados
+adicionais: frame_rate para vídeos e frame_count para imagens. Restrições
+CHECK vinculam os metadados ao tipo. O modelo Screen permanece intacto.
+`metadata.create_all` cria somente a nova tabela ausente no próximo startup;
+não há Alembic, migração destrutiva ou alteração dos registros existentes.
+
+Rotas HTML em `app/routes/admin/media.py`: GET /admin/media (ordenado por id),
+GET /admin/media/new e POST /admin/media. Templates Jinja2 compartilham
+base.html, navegação e CSS local responsivo. UploadFile é lido em blocos
+de 1 MiB, com tamanho real, ignorando MIME/Content-Length do cliente.
+Título é validado e aparado; o nome original nunca determina caminhos.
+Erros esperados retornam formulário HTML (422, 413, 500 ou 503) e sucesso
+usa 303 para o catálogo. Falhas de estrutura dos campos do upload recebem
+HTML 422, sem alterar o tratamento JSON da API de telas.
+
+`app/services/media.py` recebe o arquivo em `.upload-*.tmp` dentro de
+/app/media, com permissão 0600, valida e publica como UUID + extensão.
+A publicação usa hard link exclusivo seguido de remoção do temporário:
+operação no mesmo volume, sem copiar nem sobrescrever um nome existente.
+Commit com falha faz rollback e remove o novo arquivo definitivo; finally
+limpa os temporários. A integridade entre filesystem e SQLite é compensada
+para falhas tratáveis, não uma transação distribuída: encerramento abrupto
+do processo pode exigir conferência manual de arquivos órfãos antes de
+qualquer remoção. Não há rotina automática de exclusão de mídias.
+
+MP4 exige contêiner MP4 (marca validada, não MOV renomeado), uma trilha H.264
+yuv420p de 8 bits, até 1920 × 1080, taxas média/nominal até 30 FPS, duração
+finita positiva e AAC opcional. Outras trilhas são rejeitadas. ffprobe usa
+argumentos em lista, shell=False, somente protocolo file e demuxer mov,
+referências externas desabilitadas, timeout configurável (15 s), um thread,
+sondagem limitada e teto conjunto de 64 KiB para stdout/stderr. Percorre
+pacotes, rejeita stderr/retorno com erro e metadados/JSON inválidos; a
+estrutura de boxes tem limite de 10.000 e detecta truncamentos declarados.
+Não há transcodificação nem garantia de decodificação de todos os frames;
+a reprodução no navegador foi confirmada pelo operador; a compatibilidade
+com TV Boxes continua pendente de validação específica.
+
+Pillow==12.3.0 verifica conteúdo e decodifica cada quadro de JPEG, PNG,
+WebP e GIF, exigindo correspondência com a extensão. Limites configuráveis:
+MAX_VIDEO_UPLOAD_MB=250 e MAX_IMAGE_UPLOAD_MB=10 (MiB de 1024 × 1024 bytes),
+MAX_IMAGE_PIXELS=20000000 por quadro, MAX_IMAGE_FRAMES=100 e
+MAX_IMAGE_TOTAL_PIXELS=100000000 por arquivo. A análise evita n_frames sem
+limite e rejeita avisos de decompression bomb. GIF/WebP animados são
+armazenados sem conversão. PNG animado também segue os limites por quadro.
+SVG bruto é explicitamente rejeitado até nova decisão de tratamento seguro.
+
+GET /media/{media_id}/file fica em router separado: resolve o registro e
+valida caminho UUID confinado ao diretório, recusando links para fora.
+FileResponse envia MIME validado, Content-Disposition inline com nome
+interno, nosniff e CSP restritiva. Mantém HTTP Range: 206 para bytes=0-99,
+416 para intervalo fora do arquivo e 400 para sintaxe inválida, conforme
+Starlette. O catálogo usa img lazy e video controls muted preload=metadata,
+sem autoplay nem carregamento integral de todos os vídeos.
+
+Um único serviço signage-app, imagem digital-signage:etapa005. O volume
+signage-data:/app/data permanece; adiciona-se signage-media:/app/media,
+preparado no build para UID/GID 10001, sem chmod 777 ou bind mounts.
+O pacote Debian ffmpeg (--no-install-recommends) fornece ffprobe e FFmpeg
+para vídeos sintéticos dos testes; nenhum componente é instalado no host.
+Binding, healthcheck, usuário e serviço existentes foram preservados.
+
+Testes usam override de sessão/engine e MediaSettings com diretório
+temporário. Os 149 testes (66 anteriores e 83 novos) foram executados e
+aprovados pelo operador em 18.60 segundos, com 1 warning de depreciação
+Starlette/AnyIO e nenhuma falha. A ETAPA 005 está concluída e validada
+operacionalmente: config/build, container healthy, inicialização sem erros
+nos logs apresentados, regressão HTTP, os 14 itens do checklist pelo navegador,
+Range 206/416 e persistência após restart/force-recreate confirmados.
+O volume SQLite existente foi preservado, signage-media foi criado e
+/app/data e /app/media pertencem a signage:signage, com UID/GID 10001.
+Esses resultados foram fornecidos pelo operador, sem reexecução nesta
+atualização; registro completo em docs/STATUS.md.
+
+O operador manteve temporariamente o binding 10.4.254.202:8080 durante os
+testes como risco temporariamente aceito. O binding não protege o acesso
+nem autoriza liberação institucional. Autenticação, autorização e CSRF
+permanecem obrigatórios na ETAPA 006, antes dessa liberação; testes somente
+com operadores confiáveis em ambiente restrito.
+
+Referências consultadas: [Pillow/PyPI](https://pypi.org/project/pillow/),
+[Pillow verify/load](https://pillow.readthedocs.io/en/stable/reference/Image.html),
+[ffprobe](https://ffmpeg.org/ffprobe.html),
+[FileResponse](https://starlette.dev/responses/) e
+[pacote Debian](https://packages.debian.org/trixie/amd64/ffmpeg/filelist).
 
 ## TV Box
 

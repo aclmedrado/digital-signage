@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Mídias{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div><h1>Mídias</h1><p>Biblioteca de vídeos e imagens.</p></div>
+    <a class="button" href="{{ url_for('admin_new_media') }}">Nova mídia</a>
+  </div>
+  {% if notice %}<p class="notice success" role="status">{{ notice }}</p>{% endif %}
+  {% if assets %}
+    <div class="media-grid">
+      {% for asset in assets %}
+        <article class="media-card">
+          <h2>{{ asset.title }}</h2>
+          <dl>
+            <dt>Tipo</dt><dd>{{ 'Vídeo' if asset.kind == 'video' else 'Imagem' }} · {{ asset.mime_type }}</dd>
+            <dt>Nome original</dt><dd>{{ asset.original_filename }}</dd>
+            <dt>Tamanho</dt><dd>{{ asset.size_bytes }} bytes ({{ '%.2f'|format(asset.size_bytes / 1048576) }} MiB)</dd>
+            <dt>Dimensões</dt><dd>{{ asset.width }} × {{ asset.height }}</dd>
+            {% if asset.kind == 'video' %}
+              <dt>Duração</dt><dd>{{ '%.2f'|format(asset.duration_seconds) }} s</dd>
+              <dt>Codecs</dt><dd>{{ asset.video_codec }} · {{ asset.audio_codec or 'Sem áudio' }} · {{ '%.2f'|format(asset.frame_rate) }} FPS</dd>
+            {% else %}
+              <dt>Quadros</dt><dd>{{ asset.frame_count }}</dd>
+            {% endif %}
+            <dt>Enviado em (UTC)</dt><dd><time datetime="{{ asset.created_at.isoformat() }}Z">{{ asset.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</time></dd>
+          </dl>
+          <details>
+            <summary>Pré-visualizar {{ asset.title }}</summary>
+            {% if asset.kind == 'video' %}
+              <video controls muted preload="metadata" aria-label="{{ asset.title }}">
+                <source src="{{ url_for('media_file', media_id=asset.id) }}" type="video/mp4">
+                Seu navegador não suporta vídeo MP4.
+              </video>
+            {% else %}
+              <img src="{{ url_for('media_file', media_id=asset.id) }}" alt="{{ asset.title }}" loading="lazy">
+            {% endif %}
+          </details>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state"><h2>Nenhuma mídia cadastrada</h2><p>Selecione Nova mídia para enviar o primeiro arquivo.</p></div>
+  {% endif %}
+{% endblock %}

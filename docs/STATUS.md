@@ -1,6 +1,6 @@
 # Status do projeto
 
-Última atualização: 2026-10-09
+Última atualização: 2026-10-14
 
 ## Fase atual
 
@@ -12,6 +12,22 @@ build aprovados, 66 testes aprovados, container healthy, regressão dos
 endpoints confirmada, TV Piloto preservada no SQLite e oito testes pelo
 navegador aprovados. Autenticação e autorização continuam não implementadas;
 o painel e a API são destinados somente ao ambiente interno controlado.
+
+A ETAPA 005 está concluída e validada operacionalmente com sucesso, conforme
+resultados fornecidos pelo operador: config/build aprovados, imagem
+digital-signage:etapa005, container healthy, 149 passed e 1 warning em
+18.60 segundos, sem falhas. Regressão HTTP, os 14 itens do checklist pelo
+navegador, vídeos MP4 H.264 reais e imagem WebP, Range 206/416 e persistência
+após restart/force-recreate foram confirmados. TV Piloto e TV do Pátio,
+volume SQLite e permissões não-root foram preservados; signage-media criado.
+Esses resultados não foram reexecutados nesta atualização documental.
+
+O operador manteve temporariamente 10.4.254.202:8080 durante os testes, como
+risco temporariamente aceito. O binding não constitui proteção de acesso
+nem autorização para liberação institucional. Autenticação, autorização e
+proteção CSRF continuam ausentes e são obrigatórias na ETAPA 006, antes
+dessa liberação. Não expor à Internet. Compatibilidade com TV Boxes continua
+pendente; nenhuma etapa posterior foi iniciada nesta atualização.
 
 ## Implementado
 
@@ -35,15 +51,22 @@ o painel e a API são destinados somente ao ambiente interno controlado.
 - listagem, cadastro, edição, ativação e desativação de telas no navegador;
 - regras de Screen compartilhadas entre API e interface, sem HTTP interno;
 - testes administrativos definidos sobre SQLite temporário isolado.
+- biblioteca unificada MediaAsset, tabela media_assets e arquivos com UUID;
+- upload e catálogo administrativo de MP4/H.264, JPEG, PNG, WebP e GIF;
+- validação por ffprobe/Pillow, limites configuráveis, animações preservadas;
+- pré-visualização img/video e entrega por id com FileResponse/HTTP Range;
+- volume signage-media definido para /app/media, sem alterar signage-data;
+- testes de mídia definidos com banco e diretório temporários isolados.
 
 ## Ainda não implementado
 
 - autenticação e autorização;
-- upload de imagens;
+- proteção administrativa CSRF;
+- ingestão/exibição segura de SVG;
+- playlists e associação mídia-tela;
 - player web;
 - integração com TV Box;
 - Chromium kiosk;
-- vídeos;
 - agendamento;
 - grupos de telas;
 - monitoramento.
@@ -79,9 +102,11 @@ Operações administrativas do Docker devem utilizar `sudo`.
 
 ## Próxima etapa
 
-Auditoria e versionamento das alterações pelo operador. A validação
-operacional da ETAPA 004 está concluída; nenhuma etapa seguinte foi iniciada
-nesta atualização documental.
+Revisão documental e versionamento pelo operador após auditoria do diff.
+A validação operacional da ETAPA 005 está concluída. Autenticação,
+autorização e proteção CSRF permanecem obrigatórias na ETAPA 006, antes da
+liberação institucional; essa etapa não foi iniciada nesta atualização.
+Compatibilidade com TV Boxes exige validação específica futura.
 
 ## Registro da ETAPA 002
 
@@ -501,3 +526,298 @@ sem falhas e sem correção nesta atualização.
 Próximo passo recomendado: auditoria e versionamento pelo operador. Nenhuma
 ETAPA 005 iniciada, funcionalidade implementada, alteração de código, Docker,
 banco ou configuração global do servidor. Nenhum git add, commit ou push.
+
+## Registro da ETAPA 005
+
+### Estado inicial e inspeções
+
+pwd confirmou /home/administrador/digital-signage. Working tree limpa,
+branch main, HEAD 7a4ce3b, sincronizada com a referência local origin/main.
+git log confirmou 1d0e394 da ETAPA 004 e os commits de ADR/prompt da ETAPA 005.
+AGENTS.md, README.md, STATUS, ARCHITECTURE, os cinco ADRs e etapa005.md
+foram lidos integralmente antes de alterar arquivos. Código, Dockerfile,
+Compose, dependências, configuração de exemplo, regras de ignore, templates,
+CSS, serviços, banco e testes foram inspecionados. Documentos operacionais
+e SECURITY (inicialmente vazio) foram inspecionados antes de editar.
+Não foi encontrada divergência relevante entre documentação e código.
+
+docker compose config --quiet passou sem sudo, sem acessar o daemon.
+sudo -n docker compose ps foi bloqueado por no new privileges: estado real
+de containers, volumes e redes não confirmado na implementação inicial.
+Nenhum contorno de sudo, alteração operacional, instalação no host ou acesso
+ao SQLite real.
+ETAPAS 001–004 permanecem com a validação histórica fornecida pelo operador.
+
+### Arquivos criados
+
+- app/services/media.py;
+- app/routes/admin/media.py;
+- app/routes/media.py;
+- app/templates/admin/media/form.html;
+- app/templates/admin/media/list.html;
+- tests/test_media.py.
+
+### Arquivos modificados
+
+- app/config.py;
+- app/models.py;
+- app/main.py;
+- app/templates/base.html;
+- app/static/admin.css;
+- tests/conftest.py;
+- requirements.txt;
+- Dockerfile;
+- compose.yaml;
+- .dockerignore;
+- .env.example;
+- README.md;
+- docs/ARCHITECTURE.md;
+- docs/DEPLOYMENT.md;
+- docs/OPERATIONS.md;
+- docs/SECURITY.md;
+- docs/STATUS.md.
+
+### Implementação e decisões
+
+MediaAsset usa media_assets com id, título obrigatório (1–200 caracteres),
+kind video/image, nome original (até 255 caracteres, somente exibição),
+nome físico UUID único, MIME validado, tamanho, dimensões, duração e codecs
+do vídeo, created_at UTC. frame_rate e frame_count completam os metadados.
+CHECKs exigem tamanho/dimensões positivos e metadados coerentes por tipo.
+Screen não foi modificado; create_all cria a nova tabela no próximo startup,
+sem Alembic ou alteração do esquema existente.
+
+UploadFile é lido em blocos de 1 MiB para temporário 0600 sob /app/media.
+Limites configuráveis em MiB reais: vídeo 250 e imagem 10; arquivo vazio
+é recusado. Não se confia em Content-Length ou MIME do navegador. Arquivo
+validado é publicado sem sobrescrita com UUID, usando hard link exclusivo
+e removendo o temporário no mesmo volume. Falha no banco faz rollback e
+remove o definitivo recém-criado. finally tenta limpar cada caminho mesmo
+se outra remoção falhar; falha de limpeza é registrada e retorna HTML 503.
+Queda abrupta entre publicação e commit pode deixar resíduos; não foi
+implementada exclusão automática ou coleta de arquivos órfãos.
+
+Vídeo: MP4 real com uma trilha H.264 yuv420p/8 bits, até 1920 × 1080 e 30 FPS,
+AAC opcional (uma trilha), sem outras trilhas. yuv420p foi escolhido como
+perfil inicial conservador; outros pixel formats são recusados com razão.
+ffprobe usa lista de argumentos, shell=False, protocolo file, referências
+externas desabilitadas, timeout padrão 15 s, saída conjunta até 64 KiB,
+sondagem limitada e um thread. Valida formato/marca, codecs, dimensões,
+duração finita, FPS e presença de pacotes; erros, timeout, JSON inválido e
+truncamentos detectáveis são recusados. Leitura de boxes é limitada a 10.000.
+Não há transcodificação nem validação de decodificação completa de frames.
+
+Imagens: Pillow==12.3.0, conteúdo e extensão coerentes para JPEG, PNG,
+WebP e GIF; verify seguido de reabertura/load de todos os quadros permitidos.
+Limites adicionais configuráveis: 20.000.000 pixels/quadro, 100 quadros e
+100.000.000 pixels acumulados. Animações GIF/WebP permanecem byte a byte no
+formato original. SVG bruto é rejeitado com mensagem explícita; nenhuma
+biblioteca de SVG foi adicionada. Versão Pillow, APIs e pacote Debian
+consultados nas fontes oficiais registradas em ARCHITECTURE.
+
+Interface: GET /admin/media, GET /admin/media/new e POST /admin/media;
+catálogo determinístico por id, título, tipo/MIME, nome original, bytes/MiB,
+dimensões, duração/codecs/FPS ou quadros, data UTC e pré-visualização.
+Jinja2 com escape automático, base.html e CSS local responsivo. img lazy;
+video controls muted preload=metadata, sem autoplay. Sucesso usa 303;
+validação esperada usa HTML 422/413 e falhas operacionais HTML 500/503.
+GET /media/{media_id}/file fica em router separado, resolve banco e confina
+nome/caminho UUID, 404 para ausentes, FileResponse com MIME validado, inline,
+nosniff e CSP. Range válido usa 206, fora do arquivo 416 e malformado 400
+conforme Starlette. A suíte e Range 206/416 foram posteriormente aprovados
+pelo operador, conforme registro abaixo.
+
+Docker: digital-signage:etapa005, único signage-app, signage-data:/app/data
+preservado e signage-media:/app/media adicionado na implementação inicial.
+/app/media preparado no build para UID/GID 10001. Sem chmod 777, novo serviço,
+bind mount, alteração de porta/healthcheck ou configuração global.
+Debian fornece ffprobe no pacote ffmpeg; instalado com no-install-recommends
+somente na imagem, também para gerar vídeos sintéticos dos testes.
+Não foi construído ou iniciado container pelo agente na implementação inicial;
+build e implantação foram posteriormente confirmados pelo operador.
+
+### Testes definidos e verificações da implementação inicial
+
+83 novos casos de mídia e 66 casos anteriores: 149 definidos por inspeção
+AST na implementação inicial, não por coleta pytest naquele momento.
+Os 149 testes foram posteriormente executados e aprovados pelo operador,
+conforme registro abaixo. Cobertura: catálogo/formulário, todos os formatos,
+GIF/WebP animados, MP4 real sintético com/sem áudio, metadados, incompatíveis,
+truncamento, vazios/corrompidos, tamanhos real/exato/excedido, pixels/quadros,
+timeout/erro/saída excessiva/JSON ffprobe, UUID/path traversal, escape HTML,
+persistência em nova inicialização temporária, entrega/headers, Range
+206/416/400, ausentes, limpeza/rollback, colisão UUID sem sobrescrita, SVG,
+isolamento de banco/mídia e preservação de tela criada no teste.
+
+Efetivamente executado na implementação inicial: ast.parse em 21 arquivos
+Python, aprovado;
+docker compose config --quiet, aprovado sem sudo/daemon; revisão dos diffs
+e arquivos novos e git diff --check, aprovados. Verificações estáticas não
+confirmam imports, build, pytest, reprodução ou persistência operacional.
+Comparação AST confirmou Screen, endpoints base e lifespan preservados;
+oito arquivos anteriores de banco/schemas/API/admin/serviço/testes permanecem
+idênticos a HEAD. Comparação do Compose normalizado confirmou serviço único,
+binding, rede, restart, healthcheck, DATABASE_URL e volume SQLite preservados,
+volume de mídia adicionado e substituição das seis variáveis de limites.
+A primeira versão desse script de comparação teve TypeError por confundir
+a lista de montagens do serviço com a definição de volumes; o script foi
+corrigido e reexecutado com sucesso, sem alteração da aplicação por esse erro.
+
+Bloqueio na implementação inicial (validação posteriormente concluída pelo
+operador, sem contorno pelo agente):
+
+Tentativa sudo -n docker compose run --rm signage-app pytest -q
+-p no:cacheprovider bloqueada por no new privileges antes de executar testes.
+Resultado pytest daquela sessão: 0 executados, 0 aprovações, falhas/warnings
+de teste não avaliados. Os 66 passed/3 warnings da ETAPA 004 são históricos
+do operador e não constituem regressão executada da ETAPA 005.
+Tentativa sudo -n docker compose logs --tail=100 signage-app também bloqueada;
+nenhum log real da aplicação obtido naquela sessão. Build/up não executados
+pelo agente na implementação inicial. A validação operacional pelo operador
+resolveu as pendências de build, suíte, inicialização e logs, conforme abaixo.
+
+### Segurança, problemas e pendências
+
+Sem autenticação, autorização ou CSRF; controles obrigatórios na ETAPA 006,
+antes da liberação institucional. Testes somente com operadores confiáveis;
+não expor à Internet. O operador decidiu manter temporariamente o binding
+10.4.254.202:8080 durante os testes, como risco temporariamente aceito;
+isso não protege o acesso nem autoriza liberação institucional.
+.env, dados persistentes e configurações globais não alterados pelo agente.
+Spool multipart do framework precede a validação incremental por arquivo;
+não há quota global ou controle de concorrência. Monitorar espaço temporário
+e dos volumes. O backup local do SQLite anterior à ETAPA 005 foi criado pelo
+operador antes da implantação, conforme abaixo. Backup consistente dos dois
+volumes após inclusão de mídias e ensaio de restauração isolada estão
+documentados, mas continuam sem confirmação de execução.
+
+Pendências de implementação da ETAPA 005: nenhuma identificada nos resultados
+informados. Build, suíte completa, metadados de mídias reais, Range 206/416,
+regressão, healthy/logs, os 14 itens do checklist pelo navegador, persistência,
+backup SQLite pré-implantação e permissões foram confirmados pelo operador.
+Essas validações não permanecem pendentes.
+
+Pendências reais: compatibilidade com TV Boxes; autenticação, autorização e
+CSRF na ETAPA 006; confirmação de backup conjunto de banco/mídias e ensaio
+de restauração. Monitoramento de espaço temporário e dos volumes permanece
+como rotina operacional. O warning de depreciação Starlette/AnyIO não causou
+falhas e não foi corrigido nesta atualização. SVG seguro, playlists,
+associações e player continuam não implementados e fora do escopo da etapa.
+
+Próximo passo recomendado: auditoria do diff e versionamento pelo operador.
+Nenhuma etapa posterior foi iniciada, nem playlists, associações ou player/TV
+Box implementados. Nenhuma cópia alternativa do projeto, mudança global,
+tentativa de contorno sudo, git add, commit ou push pelo agente.
+
+## Validação operacional da ETAPA 005
+
+ETAPA 005 concluída e validada com sucesso, conforme resultados reais
+fornecidos pelo operador e registrados em 2026-10-14. Todos os comandos,
+testes e observações operacionais desta seção foram executados ou confirmados
+pelo operador; não foram executados nem reexecutados pelo Codex nesta
+atualização documental.
+
+### Build, Docker e armazenamento
+
+- `docker compose config --quiet`: aprovado;
+- `docker compose build`: aprovado;
+- imagem: `digital-signage:etapa005`;
+- container: `digital-signage-app`, estado `healthy`;
+- binding: `10.4.254.202:8080`;
+- logs apresentados: inicialização normal, sem erros;
+- aplicação executando como `uid=10001(signage) gid=10001(signage)`;
+- `/app/data` e `/app/media` pertencem a `signage:signage`;
+- volume SQLite existente `signage-data` preservado;
+- volume `signage-media` criado.
+
+### Testes automatizados
+
+Comando executado pelo operador:
+
+```bash
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+```
+
+Resultado: **149 passed, 1 warning**, duração **18.60 segundos**, nenhuma
+falha. O warning é de depreciação Starlette/AnyIO; não impediu a aprovação
+da suíte. Nenhuma correção de código ou dependências nesta atualização.
+
+### Regressão
+
+| Verificação | Resultado confirmado pelo operador |
+|---|---|
+| GET `/` | HTTP 200 |
+| GET `/health` | HTTP 200 |
+| GET `/api/screens` | HTTP 200 |
+| Telas TV Piloto e TV do Pátio | Preservadas |
+
+### Validação pelo navegador
+
+Os 14 itens do checklist foram aprovados pelo operador:
+
+1. Funcionamento do catálogo.
+2. Formulário de upload.
+3. Cadastro de imagens.
+4. Cadastro de MP4 H.264.
+5. Identificação de dimensões, duração e codecs.
+6. Pré-visualização de imagens.
+7. Reprodução de vídeos.
+8. Aceitação de WebP/GIF.
+9. Rejeição de arquivos inválidos.
+10. Rejeição explícita de SVG.
+11. Preservação do painel administrativo de telas.
+12. Persistência após restart.
+13. Persistência após force-recreate.
+14. Responsividade da interface.
+
+Vídeos MP4 H.264 reais e uma imagem WebP foram cadastrados e pré-visualizados,
+conforme evidências fornecidas pelo operador. Isso confirma a validação no
+navegador; a compatibilidade com TV Boxes permanece pendente.
+
+### HTTP Range
+
+- Requisição de intervalo válido: HTTP 206, aprovada pelo operador;
+- requisição de intervalo fora do arquivo: HTTP 416, aprovada pelo operador.
+
+### Backup pré-implantação
+
+O operador criou, antes da implantação:
+
+`/home/administrador/signage-backups/signage-before-005.db`
+
+Esse é um backup local do SQLite anterior à ETAPA 005. A pendência desse
+backup pré-implantação está resolvida. O resultado informado não comprova
+backup conjunto de banco e mídias da ETAPA 005 nem ensaio de restauração;
+essas confirmações permanecem pendentes.
+
+### Segurança administrativa
+
+O operador decidiu manter temporariamente o binding `10.4.254.202:8080`
+durante os testes. A condição é registrada como **risco temporariamente
+aceito**, pois autenticação, autorização e proteção CSRF ainda não existem.
+O binding não constitui proteção de acesso nem autorização para liberar
+o sistema institucionalmente. Esses controles permanecem obrigatórios na
+ETAPA 006, antes da liberação institucional. Uso somente com operadores
+confiáveis em ambiente restrito; não expor à Internet.
+
+### Registro desta atualização documental
+
+Nenhum arquivo criado. Alterados somente README.md, docs/STATUS.md,
+docs/ARCHITECTURE.md, docs/DEPLOYMENT.md, docs/OPERATIONS.md e docs/SECURITY.md.
+Decisões: registrar os resultados fornecidos pelo operador, remover as
+pendências efetivamente resolvidas, preservar o bloqueio sudo inicial como
+histórico e atualizar o checklist para os 14 itens confirmados. O backup foi
+registrado com seu alcance real e a decisão de binding como risco temporário.
+
+Verificação documental: diff revisado e `git diff --check` aprovado. Os testes
+operacionais, comandos Docker e validações pelo navegador não foram
+reexecutados; seus resultados são os fornecidos pelo operador.
+Problema registrado: 1 warning de depreciação Starlette/AnyIO, sem falhas.
+Pendências: compatibilidade com TV Boxes, segurança administrativa obrigatória
+na ETAPA 006 e confirmação de backup conjunto/restauração. Próximo passo
+recomendado: revisão do diff e versionamento pelo operador.
+
+Nenhuma funcionalidade implementada, alteração de código, Docker, banco ou
+configuração do servidor nesta atualização; alterações de implementação
+preexistentes no working tree foram preservadas. A ETAPA 006 não foi iniciada.
+Nenhum git add, git commit ou git push executado.

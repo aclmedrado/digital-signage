@@ -5,6 +5,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Debian fornece ffprobe no pacote ffmpeg; sem recomendações nem ferramentas no host.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && groupadd --gid 10001 signage \
@@ -13,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY app/ ./app/
 COPY tests/ ./tests/
 
-RUN mkdir -p /app/data && chown signage:signage /app/data
+RUN mkdir -p /app/data /app/media && chown signage:signage /app/data /app/media
 
 USER signage
 EXPOSE 8000

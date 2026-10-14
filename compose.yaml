@@ -2,7 +2,7 @@ name: digital-signage
 
 services:
   signage-app:
-    image: digital-signage:etapa004
+    image: digital-signage:etapa005
     build: .
     container_name: digital-signage-app
     restart: unless-stopped
@@ -10,8 +10,15 @@ services:
       - "${SIGNAGE_BIND_IP:-127.0.0.1}:${SIGNAGE_PORT:-8080}:8000"
     environment:
       DATABASE_URL: "${DATABASE_URL:-sqlite:////app/data/signage.db}"
+      MAX_VIDEO_UPLOAD_MB: "${MAX_VIDEO_UPLOAD_MB:-250}"
+      MAX_IMAGE_UPLOAD_MB: "${MAX_IMAGE_UPLOAD_MB:-10}"
+      MAX_IMAGE_PIXELS: "${MAX_IMAGE_PIXELS:-20000000}"
+      MAX_IMAGE_FRAMES: "${MAX_IMAGE_FRAMES:-100}"
+      MAX_IMAGE_TOTAL_PIXELS: "${MAX_IMAGE_TOTAL_PIXELS:-100000000}"
+      FFPROBE_TIMEOUT_SECONDS: "${FFPROBE_TIMEOUT_SECONDS:-15}"
     volumes:
       - signage-data:/app/data
+      - signage-media:/app/media
     healthcheck:
       test:
         - CMD
@@ -25,3 +32,4 @@ services:
 
 volumes:
   signage-data:
+  signage-media:
