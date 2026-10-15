@@ -15,6 +15,9 @@ a { color: #15568b; }
 .site-header a { color: white; text-decoration: none; }
 .brand { font-size: 1.3rem; font-weight: 700; }
 nav a { padding: 10px; }
+.header-content { flex-wrap: wrap; }
+.account-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.account-actions form { margin: 0; }
 main { padding-block: 36px; }
 .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 24px; }
 h1 { font-size: 1.85rem; margin: 0 0 8px; }

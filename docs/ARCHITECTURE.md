@@ -33,8 +33,10 @@ ou outros serviços. A configuração usa a rede própria do
 Compose e restart unless-stopped. Os testes pytest são executados na imagem.
 
 Build, dois testes em container e implantação foram validados operacionalmente.
-O container está healthy, com binding 10.4.254.202:8080 para a porta interna 8000
-e ambos os endpoints retornando HTTP 200, conforme docs/STATUS.md.
+Na ETAPA 002, o container ficou healthy, com binding histórico
+10.4.254.202:8080 para a porta interna 8000 e ambos os endpoints retornando
+HTTP 200, conforme docs/STATUS.md. O ambiente validado da ETAPA 006 usa
+127.0.0.1:8080 com túnel SSH, conforme seção específica abaixo.
 O player continua previsto para o MVP. A biblioteca de mídias é implementada
 na ETAPA 005, conforme seção específica abaixo.
 
@@ -102,11 +104,13 @@ As rotas JSON existentes, /health e seu healthcheck foram preservados.
 SQLite, DATABASE_URL, esquema, volume signage-data e usuário não-root não
 mudaram. Jinja2 e python-multipart são instalados somente na imagem; o
 .dockerignore inclui os templates e o CSS no contexto de build. A imagem
-dessa etapa era digital-signage:etapa004; a configuração atual passa a
-digital-signage:etapa005.
+dessa etapa era digital-signage:etapa004; a imagem atual
+digital-signage:etapa006 foi construída e validada operacionalmente pelo
+operador, conforme registro da ETAPA 006 abaixo.
 
-Não há autenticação ou autorização na interface nem na API. O uso nesta fase
-é restrito ao ambiente interno controlado, sem exposição direta à Internet. Os testes
+Na ETAPA 004 não havia autenticação ou autorização na interface nem na API.
+O uso naquela fase era restrito ao ambiente interno controlado, sem exposição
+direta à Internet. Os testes
 administrativos reutilizam o banco temporário isolado dos testes existentes.
 A ETAPA 004 foi concluída e validada operacionalmente, conforme resultados
 fornecidos pelo operador: build aprovado, imagem digital-signage:etapa004,
@@ -197,14 +201,114 @@ atualização; registro completo em docs/STATUS.md.
 O operador manteve temporariamente o binding 10.4.254.202:8080 durante os
 testes como risco temporariamente aceito. O binding não protege o acesso
 nem autoriza liberação institucional. Autenticação, autorização e CSRF
-permanecem obrigatórios na ETAPA 006, antes dessa liberação; testes somente
-com operadores confiáveis em ambiente restrito.
+foram implementados e validados pelo operador na ETAPA 006 em ambiente local,
+conforme abaixo; transporte institucional seguro permanece necessário antes
+dessa liberação. A decisão de binding da ETAPA 005
+não permite transmitir credenciais/cookies em HTTP da LAN na ETAPA 006.
 
 Referências consultadas: [Pillow/PyPI](https://pypi.org/project/pillow/),
 [Pillow verify/load](https://pillow.readthedocs.io/en/stable/reference/Image.html),
 [ffprobe](https://ffmpeg.org/ffprobe.html),
 [FileResponse](https://starlette.dev/responses/) e
 [pacote Debian](https://packages.debian.org/trixie/amd64/ffmpeg/filelist).
+
+## Implementação da ETAPA 006
+
+Conforme ADR 0006, `users`, `auth_sessions`, `login_challenges` e `login_limits`
+são tabelas adicionais criadas idempotentemente por `create_all`. Modelos e
+dados de Screen/MediaAsset permanecem preservados. User possui username único
+normalizado (trim/lowercase, ASCII, 3–64 caracteres), hash Argon2id, papel
+admin/viewer, active e timestamps UTC. Não há usuário padrão no startup.
+
+`app/services/auth.py` usa argon2-cffi==25.1.0, Argon2id m=19456 KiB, t=2,
+p=1, salt de 16 bytes e hash de 32 bytes. O perfil atende ao mínimo do ADR/OWASP
+com consumo de memória limitado por verificação. Usuário inexistente também
+passa por verificação Argon2id com hash fictício mantido somente em memória.
+Bootstrap interativo em `app/scripts/bootstrap_admin.py` valida senha de
+16–128 caracteres e três classes, solicita confirmação oculta e serializa a
+criação com BEGIN IMMEDIATE; nunca sobrescreve usuário ou cria segundo admin.
+
+Pré-sessão de login: cookie e CSRF independentes, cada um com 256 bits, hashes
+SHA-256 no SQLite e validade de 10min. POST login consome o desafio de forma
+atômica, inclusive em falha de senha; após sucesso emite sessão totalmente
+nova. O corpo urlencoded do login tem teto de 8 KiB e três campos únicos;
+erros não refletem credenciais. Sessão armazena somente hash do identificador
+opaco, user_id, CSRF secreto, criação, atividade, expiração absoluta e revoked.
+Logout POST com CSRF revoga a sessão no banco e remove cookies.
+
+`app/security.py` aplica middleware ASGI a todos os caminhos administrativos,
+à API de telas e à entrega de mídias, antes de ler corpos protegidos. Consultas
+de autenticação usam Session sobre o mesmo engine configurado em app.state;
+as rotas funcionais continuam usando get_session. Apenas usuário ativo admin
+é autorizado. CSRF da API é validado antes de ler JSON; CSRF HTML é conferido
+por dependência compartilhada antes dos serviços de telas/upload/logout.
+Formulários incluem campo oculto; GET /admin/csrf fornece o token somente à
+sessão admin autorizada, em JSON sem cache e sem CORS permissivo.
+
+GETs protegidos e acessos negados não escrevem no SQLite nem nas mídias.
+GET /admin/login cria apenas o desafio temporário exigido para login CSRF.
+Somente mutações autorizadas bem-sucedidas renovam last_activity_at, com
+intervalo mínimo de 5min. Leituras contínuas não renovam inatividade e exigem
+novo login após 30min desde a última atividade persistida. Expiração absoluta
+de 8h nunca é estendida. Relógio é injetável nos testes; sessões revogadas,
+expiradas, desconhecidas ou de usuários inativos não autorizam requisições.
+
+Tentativas de login são limitadas de forma persistente a 5 por conta e 20 por
+origem em janela fixa de 15min, inclusive credenciais válidas; limite retorna
+429 com mensagem genérica. BEGIN IMMEDIATE reserva tentativas antes de Argon2,
+sem manter lock durante a verificação. Origem usa request.client, sem ler
+X-Forwarded-For diretamente. Limpezas expurgam até 100 registros expirados por
+operação, sem rotina global de exclusão. Sessões apenas inativas/revogadas
+podem permanecer até expiração absoluta e login posterior para limpeza.
+
+Configuração validada antes de create_all. Secure=true é padrão e exige scheme
+HTTPS reconhecido pelo servidor. FORWARDED_ALLOW_IPS vazio na imagem/Compose
+desabilita confiança em headers encaminhados; IPs específicos de um ponto TLS
+confiável somente após decisão do operador, nunca '*'. Modo local exige
+Secure=false, LOCAL_AUTH_TEST_MODE=true, declaração de binding 127.0.0.1:8080,
+nenhum proxy confiável e Host localhost/127.0.0.1. A aplicação não inspeciona
+publicação de portas no daemon; Compose usa a mesma variável para ports e
+ambiente e o operador deve confirmar o binding efetivo e o túnel SSH.
+
+Cookies HTTPS: __Host-signage-session e __Host-signage-login; modo local:
+signage-local-session e signage-local-login. HttpOnly, SameSite=Lax, Path=/,
+sem Domain. Páginas sensíveis, JSON protegido e arquivos têm no-store;
+HTML recebe CSP compatível com img/video/CSS local, sem scripts/frames.
+CSP e nosniff do FileResponse são preservados. Uvicorn usa --no-access-log
+para evitar registrar URLs com entradas sensíveis; erros SQL de autenticação
+têm resposta genérica sem traceback/parâmetros. Não há credenciais em URLs.
+
+Serviço único, UID/GID 10001, volumes, binding, healthcheck e endpoints base
+preservados; imagem digital-signage:etapa006 construída e validada pelo
+operador. Os 149 casos anteriores foram preservados e os novos testes usam
+banco/mídias temporários, login real, CSRF e HTTPS simulado no TestClient.
+A suíte em container teve 267 passed, 1 warning de depreciação Starlette/AnyIO
+em 172.98 segundos, sem falhas. Config/build, estado healthy e inicialização
+sem erros nos logs apresentados também foram confirmados pelo operador.
+
+O operador criou o primeiro administrador e aprovou os 18 itens manuais,
+incluindo login/logout, proteção das rotas, CSRF 403, cookies,
+Range autenticado 206 com 100 bytes e persistência. O binding efetivo é
+127.0.0.1:8080, com acesso por túnel SSH e sem exposição direta de HTTP à rede
+institucional. Configuração temporária: SIGNAGE_BIND_IP=127.0.0.1,
+SIGNAGE_PORT=8080, SESSION_COOKIE_SECURE=false e LOCAL_AUTH_TEST_MODE=true;
+cookies observados com HttpOnly habilitado, SameSite=Lax e Secure desabilitado.
+Esses resultados foram fornecidos pelo operador; o Codex não os reexecutou
+nesta atualização documental. O bloqueio sudo inicial permanece como histórico
+em [STATUS](STATUS.md#validação-operacional-da-etapa-006).
+
+A conclusão operacional se restringe a esse teste local. Antes de uso
+institucional amplo: HTTPS com certificado válido, SESSION_COOKIE_SECURE=true,
+LOCAL_AUTH_TEST_MODE=false, revisão das políticas de acesso e definição da
+autenticação específica dos futuros players das TV Boxes. Backup/restauração
+conjunta continuam sem confirmação; MFA, recuperação administrativa e auditoria
+de operações permanecem trabalhos futuros. Não há player nesta etapa.
+
+Referências: [argon2-cffi](https://pypi.org/project/argon2-cffi/25.1.0/),
+[API Argon2](https://argon2-cffi.readthedocs.io/en/stable/api.html),
+[OWASP senhas](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html),
+[OWASP login CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
+e [Uvicorn](https://www.uvicorn.org/settings/).
 
 ## TV Box
 

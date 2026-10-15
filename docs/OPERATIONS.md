@@ -38,6 +38,8 @@ restart mantêm o binding do container existente; para alterar o binding,
 execute compose up -d --wait com as variáveis, conforme docs/DEPLOYMENT.md.
 
 Consulte docs/DEPLOYMENT.md para build e primeira inicialização.
+Para a ETAPA 006, cumprir primeiro transporte seguro, testes e backup conforme
+a seção administrativa abaixo. Não transmitir login/cookies em HTTP da LAN.
 
 O comando pytest desabilita o cache para evitar PytestCacheWarning por falta de
 permissão de escrita em /app/.pytest_cache pelo usuário não-root. Na validação
@@ -55,10 +57,9 @@ Para futuras implantações ou revalidações, siga os procedimentos de inspeç�
 build e testes de docs/DEPLOYMENT.md, preservando o binding, o volume e a
 configuração existente. Não contornar bloqueios de sudo nem alterar permissões.
 
-Acesse no navegador:
-
-- `http://10.4.254.202:8080/admin`;
-- `http://10.4.254.202:8080/admin/screens`.
+Acesse /admin e /admin/screens somente pela URL HTTPS válida selecionada
+pelo operador ou via http://127.0.0.1:18080 no teste local com túnel SSH e
+binding 127.0.0.1:8080 confirmado, conforme docs/DEPLOYMENT.md.
 
 Ajuste IP e porta conforme a implantação. O painel permite listar, cadastrar,
 editar, ativar e desativar telas; não há exclusão. Cadastro e edição solicitam
@@ -66,8 +67,10 @@ nome, slug e localização. Novas telas ficam ativas; ativação e desativação
 são ações separadas na listagem. Sucesso redireciona por HTTP 303 para a
 listagem com uma mensagem; erros mantêm os valores no formulário HTML.
 
-O painel e a API ainda não possuem autenticação ou autorização. Utilizar
-somente no ambiente interno controlado; não expor a aplicação diretamente à Internet.
+Na ETAPA 004, painel e API não possuíam autenticação/autorização. A ETAPA 006
+implementa a política de acesso descrita abaixo, validada operacionalmente
+pelo operador no ambiente local com túnel SSH. A disponibilização institucional
+continua condicionada aos requisitos descritos na seção administrativa.
 
 Comandos para futuras implantações ou revalidações, no terminal do operador:
 
@@ -111,7 +114,8 @@ recriação, down/up sem -v e rebuild seguido de recriação. Após o último ci
 o container voltou healthy e os mesmos created_at e updated_at foram
 preservados. Resultados completos em docs/STATUS.md.
 
-Para repetir a verificação, crie uma tela pela API e anote o id retornado.
+Para repetir a verificação na ETAPA 006, use sessão admin e CSRF na API por
+transporte seguro, crie uma tela e anote o id retornado.
 Consulte GET /api/screens/{id}, execute sudo docker compose restart signage-app,
 aguarde healthy e repita a consulta, comparando os dados. Depois execute sudo
 docker compose up -d --force-recreate signage-app, aguarde healthy e consulte
@@ -152,14 +156,19 @@ abrupta ou falta de permissão durante a limpeza, pode haver resíduo: conferir
 logs e comparar com metadados antes de qualquer intervenção manual. Não
 automatizar remoção nem editar registros reais como rotina nesta etapa.
 
-Autenticação, autorização e proteção CSRF ainda estão ausentes e são
-obrigatórias na ETAPA 006, antes da liberação institucional. Testar somente
+Na ETAPA 005, autenticação, autorização e proteção CSRF estavam ausentes.
+Foram implementadas e validadas pelo operador na ETAPA 006 em teste local com
+túnel SSH; HTTPS institucional e os demais requisitos abaixo continuam
+necessários antes da liberação institucional. Testar somente
 com operadores confiáveis em ambiente restrito; não expor à Internet.
 O operador decidiu manter temporariamente 10.4.254.202:8080 durante os testes,
-como risco temporariamente aceito. Esse binding não constitui proteção de
-acesso nem autorização para liberação institucional.
+como risco temporariamente aceito na ETAPA 005. Esse binding não constitui
+proteção de acesso nem autorização para liberação institucional, nem permite
+transmitir credenciais/cookies em HTTP da LAN na ETAPA 006.
 Não alterar firewall, SSH, sudoers, grupos, Docker global ou permissões
-para contornar bloqueios de sudo. O .env real e as portas foram preservados.
+para contornar bloqueios de sudo. O .env real e as portas foram preservados
+pelo Codex na implementação da ETAPA 005; o binding validado da ETAPA 006 está
+registrado na seção administrativa abaixo.
 
 Comandos para futuras implantações ou revalidações, no terminal do operador,
 após inspeção e backup:
@@ -207,11 +216,18 @@ foram cadastrados e pré-visualizados. Range válido (HTTP 206) e intervalo
 fora do arquivo (HTTP 416) também foram aprovados. Nas futuras revalidações,
 confira adicionalmente UID/GID, permissões e espaço em disco nos dois volumes.
 
-Para Range, substitua 1 pelo id real de um MP4 com mais de 100 bytes e ajuste
-IP/porta conforme o binding aprovado pelo operador:
+Para Range na ETAPA 006, use sessão admin válida. No computador do operador,
+somente na opção de teste local com SSH, use cookie jar privado fora do Git,
+sem divulgar seu conteúdo, e substitua 1 pelo id real de um MP4 com mais de
+100 bytes (na opção institucional, substitua pela URL HTTPS válida):
 
 ```bash
-curl --noproxy '*' -D - -o /dev/null -H 'Range: bytes=0-99' http://127.0.0.1:8080/media/1/file
+curl --cookie /CAMINHO/PROTEGIDO/cookies.txt --noproxy '*' -D - -o /dev/null -H 'Range: bytes=0-99' http://127.0.0.1:18080/media/1/file
+```
+
+As verificações de serviço/armazenamento são no terminal do servidor:
+
+```bash
 sudo docker compose restart signage-app
 sudo docker compose up -d --force-recreate signage-app
 sudo docker compose exec signage-app id
@@ -238,7 +254,7 @@ dos dois volumes e o ensaio de restauração continuam sem confirmação de exec
 Procedimento para futuros backups consistentes, não executado nesta atualização.
 No diretório oficial, inspecione o espaço disponível e reserve uma janela
 sem uploads. A imagem
-etapa005 deve estar construída antes de usar compose run abaixo; build não
+etapa006 deve estar construída antes de usar compose run abaixo; build não
 recria o serviço em produção. Pare apenas
 signage-app, confira compose ps e gere um arquivo fora dos volumes, mantendo
 o mesmo nome de projeto e .env. O comando Python abaixo não importa a
@@ -265,3 +281,125 @@ um arquivo no mesmo disco não protege contra perda do servidor.
 Uma restauração deve ser ensaiada em volumes isolados autorizados, preservando
 UID/GID 10001 e verificando catálogo, arquivos e telas. Não restaurar sobre
 produção sem plano e autorização específicos nem remover os volumes atuais.
+
+## Administração autenticada — ETAPA 006
+
+Etapa concluída e validada operacionalmente pelo operador no ambiente local
+com túnel SSH. Evidências fornecidas pelo operador nesta solicitação e
+registradas em 2026-10-15; o Codex não executou nem reexecutou comandos Docker,
+pytest, bootstrap, requisições HTTP ou testes pelo navegador nesta atualização
+documental. O bloqueio sudo da implementação inicial permanece como histórico
+em [STATUS](STATUS.md#registro-da-etapa-006).
+
+### Resultados operacionais e automatizados fornecidos pelo operador
+
+- `sudo docker compose config --quiet`: aprovado;
+- `sudo docker compose build`: aprovado; imagem digital-signage:etapa006;
+- container digital-signage-app healthy; inicialização sem erros nos logs
+  apresentados;
+- binding efetivo 127.0.0.1:8080; acesso administrativo por túnel SSH,
+  sem exposição direta do HTTP à rede institucional no ambiente validado;
+- primeiro administrador criado com sucesso pelo operador;
+- comando automatizado executado pelo operador:
+  `sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider`;
+  resultado: **267 passed, 1 warning, 172.98 segundos**, nenhuma falha.
+  Warning de depreciação Starlette/AnyIO; todos os testes anteriores aprovados.
+
+A configuração temporária confirmada utiliza SIGNAGE_BIND_IP=127.0.0.1,
+SIGNAGE_PORT=8080, SESSION_COOKIE_SECURE=false e LOCAL_AUTH_TEST_MODE=true.
+Destina-se exclusivamente a testes locais por túnel SSH e não libera uso
+institucional amplo. Antes dessa disponibilização: HTTPS com certificado
+válido, SESSION_COOKIE_SECURE=true, LOCAL_AUTH_TEST_MODE=false, revisão das
+políticas de acesso e definição de autenticação específica dos futuros players
+das TV Boxes. MFA, recuperação administrativa e auditoria de operações são
+trabalhos futuros; backup/restauração conjunta continuam sem confirmação.
+
+### Procedimentos para futuras implantações e revalidações
+
+Executar a sequência de docs/DEPLOYMENT.md no terminal do operador. Não fazer
+login/bootstrap em rede HTTP sem TLS. Nunca alterar .env/binding, host ou
+privilégios automaticamente para testar.
+
+O primeiro administrador já foi criado na validação. Procedimento de bootstrap
+para uma nova implantação, após testes, backup e escolha de transporte seguro:
+
+```bash
+sudo docker compose exec -it signage-app python -m app.scripts.bootstrap_admin
+```
+
+Exige terminal interativo, username ASCII normalizado (3–64 caracteres) e
+senha oculta com confirmação (16–128 caracteres, três classes entre letras
+minúsculas/maiúsculas/números/símbolos). Não aceita argumentos. Repetição,
+usuário existente ou administrador já criado são recusados sem sobrescrita.
+Não existe cadastro público, senha inicial padrão ou recuperação pelo navegador.
+O Codex não deve executar esse bootstrap no banco de produção.
+
+Login usa pré-sessão de 10min e CSRF oculto; senha incorreta tem mensagem
+genérica. Após sucesso, nova sessão admin libera telas/mídias. Sair é POST
+com CSRF e revoga somente a sessão atual. GETs protegidos não escrevem no
+banco; somente mutações autorizadas bem-sucedidas renovam atividade, com
+intervalo mínimo de 5min. Leituras contínuas não renovam inatividade: relogar
+após 30min desde a última atividade persistida. Expiração absoluta é 8h,
+sem extensão. Tentativas: 5/conta e 20/origem em janela fixa de 15min,
+inclusive logins corretos; ao receber 429, aguardar expiração da janela.
+
+Cliente da API deve autenticar-se pelo mesmo fluxo de login/pre-sessão em
+transporte seguro, manter o cookie e consultar GET /admin/csrf autenticado.
+O JSON no-store contém o token para X-CSRF-Token em POST/PATCH /api/screens.
+Nunca transportar cookie ou token em query string, links ou logs. Proteger
+cookie jars fora do Git; não incluir senha em comandos de operação.
+HTML usa campo oculto em criação/edição/toggle, upload e logout. API/download
+sem sessão: 401 JSON; papel insuficiente: 403 JSON; CSRF inválido: 403 sem
+mutação. Em HTTP com Secure=true, administração/login são bloqueados com 503.
+Não tratar essa recusa de transporte como regressão dos endpoints de saúde.
+
+### Checklist manual confirmado pelo operador
+
+Os 18 itens abaixo foram aprovados pelo operador e podem ser repetidos em
+futuras revalidações. São evidências manuais, distintas da suíte pytest:
+
+1. Página de login acessível sem autenticação: aprovado.
+2. Login correto: aprovado.
+3. Senha incorreta recusada: aprovado.
+4. Painel de telas protegido: aprovado.
+5. Painel de mídias protegido: aprovado.
+6. API de telas sem sessão retorna 401: aprovado.
+7. Download de mídia sem sessão retorna 401: aprovado.
+8. Administrador autenticado consegue editar telas: aprovado.
+9. Administrador autenticado consegue cadastrar mídia: aprovado.
+10. Escrita na API sem token CSRF retorna 403: aprovado.
+11. Logout encerra a sessão: aprovado.
+12. Acesso após logout exige login novamente: aprovado.
+13. Cookies conferidos no navegador: aprovado.
+14. HTTP Range de MP4 com sessão válida: aprovado.
+15. TV Piloto, TV do Pátio e mídias anteriores preservadas: aprovado.
+16. Dados e sessão persistem após restart, respeitando as regras implementadas
+    de expiração: aprovado conforme checklist do operador.
+17. Recriação do container preserva usuários, telas e mídias: aprovado.
+18. Interface utilizável em computador e janela estreita: aprovado.
+
+### Resultados manuais complementares de autenticação e segurança
+
+| Verificação do operador | Resultado real |
+|---|---|
+| GET /health | HTTP 200 |
+| GET /admin/screens sem sessão | HTTP 303 para /admin/login |
+| GET /api/screens sem sessão | HTTP 401 |
+| GET /media/1/file sem sessão | HTTP 401 |
+| Escrita autenticada sem X-CSRF-Token (item 10) | HTTP 403; proteção CSRF confirmada |
+| Cookies no HTTP local (item 13) | HttpOnly habilitado; SameSite=Lax; Secure desabilitado conforme configuração temporária; transporte de rede por túnel SSH |
+| MP4 autenticado com Range: bytes=0-99 (item 14) | HTTP 206 Partial Content; 100 bytes recebidos |
+
+O item 16 registra a confirmação do checklist do operador, sem acrescentar
+medições individuais de timeout. A confirmação manual de Range nesta etapa
+é a de 206 com 100 bytes; Range 416/400 integra a cobertura automatizada
+descrita em STATUS, sem nova atribuição de teste manual.
+
+Evidências consolidadas em
+[STATUS](STATUS.md#validação-operacional-da-etapa-006). O checklist anterior
+incluía backup/recuperação como verificação operacional: não houve evidência
+de execução de backup conjunto ou ensaio de restauração nesta validação.
+Persistência após restart/recriação não comprova restauração. Backups de
+SQLite contêm hashes de senha e CSRF; restringir acesso, proteger cópias e
+ensaiar restauração conjunta em ambiente isolado autorizado. O procedimento
+acima permanece disponível para execução futura; não foi executado pelo Codex.

@@ -14,7 +14,7 @@ class Inputs(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
-        if tag == "input":
+        if tag == "input" and attrs.get("name") != "csrf_token":
             self.fields[attrs["name"]] = attrs
 
 

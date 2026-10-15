@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.config import MediaSettings, get_media_settings
 from app.database import get_session
+from app.security import require_form_csrf
 from app.services import media
 
-router = APIRouter(prefix="/admin/media")
+router = APIRouter(prefix="/admin/media", dependencies=[Depends(require_form_csrf)])
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
 
 

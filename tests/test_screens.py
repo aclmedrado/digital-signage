@@ -1,10 +1,10 @@
 from datetime import datetime
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import inspect
 
 from app.main import app
+from tests.helpers import AuthenticatedClient
 
 DATA = {"name": "TV Recepção", "slug": "recepcao", "location": "Recepção"}
 
@@ -84,10 +84,12 @@ def test_invalid_slug(client, slug):
 
 
 def test_persistence_across_startup(isolated_database):
-    with TestClient(app) as client:
+    with AuthenticatedClient(app) as client:
+        client.authenticate(isolated_database)
         data = create(client).json()
     isolated_database.dispose()
-    with TestClient(app) as client:
+    with AuthenticatedClient(app) as client:
+        client.authenticate(isolated_database)
         response = client.get(f"/api/screens/{data['id']}")
         assert response.status_code == 200
         assert response.json() == data

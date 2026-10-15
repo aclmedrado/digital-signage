@@ -13,6 +13,7 @@
     {% endif %}
     <form method="post"
           action="{{ url_for('admin_update_screen', screen_id=screen_id) if screen_id is not none else url_for('admin_create_screen') }}">
+      <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
       <div class="field">
         <label for="name">Nome</label>
         <input type="text" id="name" name="name" value="{{ values.name }}" required maxlength="200"

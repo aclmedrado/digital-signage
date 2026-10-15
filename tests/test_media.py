@@ -5,7 +5,6 @@ import subprocess
 import sys
 from uuid import UUID
 
-from fastapi.testclient import TestClient
 from PIL import Image
 import pytest
 from sqlalchemy import inspect, select
@@ -16,6 +15,7 @@ from app.config import MediaSettings, get_media_settings
 from app.main import app
 from app.models import MediaAsset
 from app.services import media
+from tests.helpers import AuthenticatedClient
 
 
 def image_bytes(format="PNG", size=(16, 12), frames=1):
@@ -314,11 +314,13 @@ def test_uuid_collision_does_not_overwrite(client, isolated_database, isolated_m
 
 
 def test_metadata_persists_across_startup(isolated_database, isolated_media):
-    with TestClient(app) as client:
+    with AuthenticatedClient(app) as client:
+        client.authenticate(isolated_database)
         upload(client, title="Persistente")
     original, = assets(isolated_database)
     isolated_database.dispose()
-    with TestClient(app) as client:
+    with AuthenticatedClient(app) as client:
+        client.authenticate(isolated_database)
         assert "Persistente" in client.get("/admin/media").text
         assert client.get(f"/media/{original.id}/file").content == image_bytes()
     restored, = assets(isolated_database)

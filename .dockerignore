@@ -6,10 +6,12 @@
 !app/routes/
 !app/routes/admin/
 !app/services/
+!app/scripts/
 !app/templates/
 !app/templates/admin/
 !app/templates/admin/screens/
 !app/templates/admin/media/
+!app/templates/admin/auth/
 !app/templates/**/*.html
 !app/static/
 !app/static/*.css

@@ -62,10 +62,8 @@ listagem, cadastro, edição, ativação e desativação de telas usando FastAPI
 Jinja2 e formulários HTML, sem JavaScript. A etapa está concluída e validada
 operacionalmente, conforme resultados fornecidos pelo operador: 66 testes
 aprovados, container healthy, TV Piloto preservada no SQLite e os oito testes
-pelo navegador aprovados. Acesso no ambiente atual:
-`http://10.4.254.202:8080/admin`. Resultados e warnings em docs/STATUS.md.
-O painel e a API ainda não possuem autenticação ou autorização: manter a
-aplicação somente em ambiente interno controlado, sem exposição pública.
+pelo navegador aprovados. Resultados e warnings em docs/STATUS.md.
+A política de acesso implementada na ETAPA 006 está descrita abaixo.
 
 A ETAPA 005 implementa a biblioteca em `/admin/media`, priorizando MP4/H.264,
 com upload, catálogo, metadados e pré-visualização pelo navegador. Suporta
@@ -86,14 +84,54 @@ Os arquivos ficam em `signage-media:/app/media`; o banco permanece em
 `signage-data:/app/data`. A imagem instala Pillow e o pacote Debian que
 fornece ffprobe, sem dependências no host.
 
-O upload ainda não possui autenticação, autorização ou proteção CSRF.
-Usar somente com operadores confiáveis em ambiente restrito. Esses controles
-são obrigatórios na ETAPA 006, antes da liberação institucional; não expor
-à Internet. O operador decidiu manter temporariamente `10.4.254.202:8080`
-durante os testes, como risco temporariamente aceito. Esse binding não
-constitui proteção de acesso nem autorização para liberação institucional.
-Consulte os resultados em `docs/STATUS.md` e os procedimentos e backup em
-`docs/OPERATIONS.md`.
+A ETAPA 006 implementa login, Argon2id, sessões opacas persistentes, papel
+`admin`, logout com revogação e CSRF em formulários e escrita da API.
+Painel, API de telas e arquivos de mídia exigem administrador ativo.
+API/download anônimos passam a retornar 401, papel insuficiente 403 e
+escrita sem CSRF 403; GET administrativo anônimo redireciona ao login em
+transporte permitido. `/`, `/health` e CSS do login permanecem públicos;
+documentação automática da API permanece desabilitada.
+
+A ETAPA 006 está concluída e validada operacionalmente pelo operador no
+ambiente local de testes: config/build aprovados, imagem
+`digital-signage:etapa006`, container `digital-signage-app` healthy e
+`267 passed, 1 warning` em 172.98 segundos, sem falhas. Todos os testes
+anteriores permaneceram aprovados. Os 18 itens manuais foram aprovados,
+incluindo login/logout, CSRF, cookies, Range autenticado e
+persistência. Os resultados foram fornecidos pelo operador e não foram
+reexecutados pelo Codex nesta atualização documental. Evidências e histórico
+em [docs/STATUS.md](docs/STATUS.md#validação-operacional-da-etapa-006).
+
+O binding efetivo confirmado é `127.0.0.1:8080`, com acesso administrativo
+por túnel SSH e sem exposição direta do HTTP à rede institucional no ambiente
+validado. Essa validação não libera uso institucional amplo: ainda exige
+HTTPS com certificado válido, `SESSION_COOKIE_SECURE=true`,
+`LOCAL_AUTH_TEST_MODE=false`, revisão das políticas de acesso e definição de
+autenticação específica para os futuros players das TV Boxes.
+
+Cookies usam Secure, HttpOnly, SameSite=Lax e Path=/ por padrão, sem Domain.
+Sessões têm duração absoluta de 8h e inatividade de 30min no servidor;
+mutações autorizadas renovam atividade no máximo a cada 5min, sem estender
+as 8h. GETs protegidos não escrevem no SQLite nem renovam inatividade.
+O primeiro administrador foi criado com sucesso pelo operador. O procedimento
+de bootstrap no terminal do container usa senha oculta e confirmação:
+
+```bash
+sudo docker compose exec -it signage-app python -m app.scripts.bootstrap_admin
+```
+
+Não executar bootstrap/login antes dos testes e da escolha de transporte
+seguro. Não enviar credenciais nem cookies por `http://10.4.254.202:8080`.
+O padrão bloqueia login e áreas protegidas em HTTP com 503, sem emitir cookies.
+HTTPS válido é obrigatório em operação institucional. O teste temporário
+validado utiliza `SIGNAGE_BIND_IP=127.0.0.1`, `SIGNAGE_PORT=8080`,
+`SESSION_COOKIE_SECURE=false` e `LOCAL_AUTH_TEST_MODE=true`, com túnel SSH.
+Os cookies conferidos pelo operador têm HttpOnly habilitado, SameSite=Lax e
+Secure desabilitado conforme esse HTTP local. O procedimento exige ausência
+de proxy confiável; não há downgrade automático. O Codex não acessou nem
+alterou o `.env` real nesta atualização.
+Procedimentos e verificação do binding efetivo em `docs/DEPLOYMENT.md`;
+bootstrap, CSRF e backup em `docs/OPERATIONS.md`; limites em `docs/SECURITY.md`.
 
 Consulte:
 
@@ -114,6 +152,8 @@ Consulte:
 
 No diretório oficial, confira primeiro se a porta escolhida (padrão 8080) está livre com
 `ss -tulpn`. Se houver conflito, não suba o serviço.
+Antes da implantação da ETAPA 006, siga também a decisão de transporte seguro
+e o backup em docs/DEPLOYMENT.md. Os comandos abaixo são para o operador.
 
 ```bash
 sudo docker compose build

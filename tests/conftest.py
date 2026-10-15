@@ -1,10 +1,27 @@
 import pytest
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
 from app.config import MediaSettings, get_media_settings
 from app.database import get_session, make_engine
 from app.main import app
+from tests.helpers import AuthenticatedClient
+
+
+@pytest.fixture(autouse=True)
+def isolated_auth_config(monkeypatch):
+    # Nenhum teste herda transporte inseguro ou limites do .env de produção.
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "true")
+    monkeypatch.setenv("LOCAL_AUTH_TEST_MODE", "false")
+    monkeypatch.setenv("SIGNAGE_BIND_IP", "127.0.0.1")
+    monkeypatch.setenv("SIGNAGE_PORT", "8080")
+    monkeypatch.setenv("FORWARDED_ALLOW_IPS", "")
+    for name in ("SESSION_ABSOLUTE_SECONDS", "SESSION_IDLE_SECONDS", "SESSION_TOUCH_SECONDS",
+                 "LOGIN_CHALLENGE_SECONDS", "LOGIN_ATTEMPT_WINDOW_SECONDS",
+                 "LOGIN_ACCOUNT_ATTEMPTS", "LOGIN_ORIGIN_ATTEMPTS"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(app.state, "auth_clock", lambda: datetime(2026, 10, 14, 12, tzinfo=timezone.utc))
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +57,13 @@ def isolated_database(tmp_path):
 
 
 @pytest.fixture
-def client():
-    with TestClient(app) as client:
+def client(isolated_database):
+    with AuthenticatedClient(app) as client:
+        client.authenticate(isolated_database)
+        yield client
+
+
+@pytest.fixture
+def anonymous_client():
+    with TestClient(app, base_url="https://testserver") as client:
         yield client

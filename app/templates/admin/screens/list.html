@@ -40,6 +40,7 @@
                   <a class="button secondary" href="{{ url_for('admin_edit_screen', screen_id=screen.id) }}"
                      aria-label="Editar {{ screen.name }}">Editar</a>
                   <form method="post" action="{{ url_for('admin_toggle_screen', screen_id=screen.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
                     <button class="button secondary" type="submit"
                             aria-label="{{ 'Desativar' if screen.active else 'Ativar' }} {{ screen.name }}">
                       {{ 'Desativar' if screen.active else 'Ativar' }}

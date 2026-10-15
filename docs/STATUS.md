@@ -1,6 +1,6 @@
 # Status do projeto
 
-Última atualização: 2026-10-14
+Última atualização: 2026-10-15
 
 ## Fase atual
 
@@ -10,8 +10,8 @@ A ETAPA 002 permanece validada. A ETAPA 004 está concluída e validada
 operacionalmente, conforme resultados fornecidos pelo operador: config e
 build aprovados, 66 testes aprovados, container healthy, regressão dos
 endpoints confirmada, TV Piloto preservada no SQLite e oito testes pelo
-navegador aprovados. Autenticação e autorização continuam não implementadas;
-o painel e a API são destinados somente ao ambiente interno controlado.
+navegador aprovados. Naquela etapa, autenticação e autorização ainda não
+existiam; a política implementada na ETAPA 006 está descrita abaixo.
 
 A ETAPA 005 está concluída e validada operacionalmente com sucesso, conforme
 resultados fornecidos pelo operador: config/build aprovados, imagem
@@ -22,12 +22,43 @@ após restart/force-recreate foram confirmados. TV Piloto e TV do Pátio,
 volume SQLite e permissões não-root foram preservados; signage-media criado.
 Esses resultados não foram reexecutados nesta atualização documental.
 
-O operador manteve temporariamente 10.4.254.202:8080 durante os testes, como
+O operador manteve temporariamente 10.4.254.202:8080 durante os testes da
+ETAPA 005, como
 risco temporariamente aceito. O binding não constitui proteção de acesso
 nem autorização para liberação institucional. Autenticação, autorização e
-proteção CSRF continuam ausentes e são obrigatórias na ETAPA 006, antes
-dessa liberação. Não expor à Internet. Compatibilidade com TV Boxes continua
-pendente; nenhuma etapa posterior foi iniciada nesta atualização.
+proteção CSRF foram implementadas e validadas pelo operador na ETAPA 006,
+no ambiente local com túnel SSH descrito abaixo. Não transmitir
+credenciais/cookies no HTTP da LAN.
+Compatibilidade com TV Boxes continua pendente.
+
+A ETAPA 006 está concluída e validada operacionalmente pelo operador no
+ambiente local de testes. Implementa login, Argon2id, sessões opacas
+persistentes, autorização admin, logout com revogação, pré-sessão de login e
+CSRF em formulários/API. Config/build aprovados, imagem digital-signage:etapa006,
+container digital-signage-app healthy e inicialização sem erros nos logs
+apresentados. A suíte em container teve **267 passed, 1 warning em 172.98
+segundos**, sem falhas, incluindo aprovação de todos os testes anteriores.
+O warning é de depreciação Starlette/AnyIO. Separadamente, os 18 itens manuais
+foram aprovados; primeiro administrador criado com sucesso pelo operador.
+
+Binding efetivo confirmado: 127.0.0.1:8080. Acesso administrativo por túnel SSH,
+sem exposição direta do HTTP à rede institucional no ambiente validado.
+Configuração temporária: SIGNAGE_BIND_IP=127.0.0.1, SIGNAGE_PORT=8080,
+SESSION_COOKIE_SECURE=false e LOCAL_AUTH_TEST_MODE=true. Cookies observados
+com HttpOnly habilitado, SameSite=Lax e Secure desabilitado conforme HTTP local.
+CSRF autenticado sem token retornou 403; Range autenticado bytes=0-99 retornou
+206 Partial Content com 100 bytes. Login/logout, autorização, preservação de
+telas/mídias, persistência após restart conforme expiração e usuários/telas/
+mídias após recriação foram confirmados pelo operador.
+
+Resultados fornecidos pelo operador nesta solicitação, sem execução ou
+reexecução pelo Codex nesta atualização documental. O bloqueio sudo inicial
+e as verificações estáticas permanecem no histórico da implementação;
+evidências atuais em [Validação operacional da ETAPA 006](#validação-operacional-da-etapa-006).
+O sistema não está liberado para uso institucional amplo. HTTPS válido,
+SESSION_COOKIE_SECURE=true, LOCAL_AUTH_TEST_MODE=false, revisão das políticas
+de acesso e definição de autenticação dos futuros players continuam necessários.
+Backup/restauração conjunta permanecem sem confirmação de execução.
 
 ## Implementado
 
@@ -57,11 +88,18 @@ pendente; nenhuma etapa posterior foi iniciada nesta atualização.
 - pré-visualização img/video e entrega por id com FileResponse/HTTP Range;
 - volume signage-media definido para /app/media, sem alterar signage-data;
 - testes de mídia definidos com banco e diretório temporários isolados.
+- User, AuthSession, LoginChallenge e LoginLimit persistentes no SQLite;
+- Argon2id e bootstrap administrativo interativo, sem credenciais padrão;
+- login/logout com pré-sessão CSRF, cookies opacos e revogação no servidor;
+- autorização admin em painel, API de telas e arquivos, com CSRF nas escritas;
+- cookies Secure por padrão, timeouts absoluto/inatividade e limitação de login;
+- configuração de transporte validada, no-store e proteção antes de ler corpos;
+- novos testes isolados e regressão adaptada com login/CSRF reais.
 
 ## Ainda não implementado
 
-- autenticação e autorização;
-- proteção administrativa CSRF;
+- HTTPS institucional e configuração operacional de transporte seguro;
+- MFA, recuperação de conta e auditoria completa (fora da ETAPA 006);
 - ingestão/exibição segura de SVG;
 - playlists e associação mídia-tela;
 - player web;
@@ -100,13 +138,17 @@ O Docker foi instalado através do repositório oficial da Docker.
 O usuário `administrador` não pertence deliberadamente ao grupo `docker`.
 Operações administrativas do Docker devem utilizar `sudo`.
 
-## Próxima etapa
+## Próximo passo recomendado
 
-Revisão documental e versionamento pelo operador após auditoria do diff.
-A validação operacional da ETAPA 005 está concluída. Autenticação,
-autorização e proteção CSRF permanecem obrigatórias na ETAPA 006, antes da
-liberação institucional; essa etapa não foi iniciada nesta atualização.
-Compatibilidade com TV Boxes exige validação específica futura.
+Auditoria do diff documental pelo operador. Antes da disponibilização
+institucional: HTTPS com certificado válido, SESSION_COOKIE_SECURE=true,
+LOCAL_AUTH_TEST_MODE=false, revisão das políticas de acesso e definição de
+autenticação específica para os futuros players das TV Boxes. Validar backup
+conjunto e restauração em ambiente isolado autorizado; não há evidência de
+execução desses procedimentos nesta validação. MFA, recuperação administrativa
+e auditoria de operações permanecem trabalhos futuros conforme decisões
+existentes. Compatibilidade com TV Boxes ainda exige validação específica.
+Nenhuma etapa seguinte foi iniciada nesta atualização documental.
 
 ## Registro da ETAPA 002
 
@@ -821,3 +863,409 @@ Nenhuma funcionalidade implementada, alteração de código, Docker, banco ou
 configuração do servidor nesta atualização; alterações de implementação
 preexistentes no working tree foram preservadas. A ETAPA 006 não foi iniciada.
 Nenhum git add, git commit ou git push executado.
+
+## Registro da ETAPA 006
+
+Registro histórico da implementação inicial. O bloqueio sudo, os testes não
+executados e as pendências descritos nessa ocasião são preservados para
+rastreabilidade. A validação posterior pelo operador está registrada em
+[Validação operacional da ETAPA 006](#validação-operacional-da-etapa-006),
+com distinção entre testes automatizados e manuais e limites da conclusão.
+
+### Estado inicial, leituras e inspeções
+
+pwd confirmou /home/administrador/digital-signage; branch main, working tree
+limpa, HEAD 0c9bb18. git log -3: 0c9bb18 (prompt 006), 15de5c7 (ADR 0006)
+e 3166a7d (biblioteca de mídias). Referência local origin/main alinhada.
+AGENTS.md, README.md, STATUS, ARCHITECTURE, SECURITY, DEPLOYMENT, OPERATIONS,
+os seis ADRs e docs/prompts/etapa006.md lidos integralmente. Inspecionados
+todos os modelos, configuração, engine/get_session, schemas, rotas, serviços,
+templates/CSS, upload/FileResponse, testes, dependências, Dockerfile, Compose
+e arquivos de ignore/.env.example. Não havia autenticação/middleware de
+sessão. Não identificada divergência relevante que impedisse a implementação.
+.env não foi exibido nem editado; nenhum segredo operacional registrado.
+
+sudo -n docker compose ps foi bloqueado por no new privileges. Estado real
+de containers, redes, volumes, binding e logs não confirmado nesta sessão;
+nenhuma tentativa de contorno. A validação da ETAPA 005 continua sendo a
+fornecida pelo operador, sem representar regressão executada da ETAPA 006.
+
+### Arquivos criados
+
+- app/services/auth.py;
+- app/security.py;
+- app/routes/admin/auth.py;
+- app/scripts/__init__.py;
+- app/scripts/bootstrap_admin.py;
+- app/templates/admin/auth/login.html;
+- tests/helpers.py;
+- tests/test_auth.py.
+
+### Arquivos modificados
+
+- app/config.py;
+- app/models.py;
+- app/main.py;
+- app/routes/admin/screens.py;
+- app/routes/admin/media.py;
+- app/templates/base.html;
+- app/templates/admin/screens/form.html;
+- app/templates/admin/screens/list.html;
+- app/templates/admin/media/form.html;
+- app/static/admin.css;
+- requirements.txt;
+- Dockerfile;
+- compose.yaml;
+- .dockerignore;
+- .env.example;
+- tests/conftest.py;
+- tests/test_screens.py;
+- tests/test_admin_screens.py;
+- tests/test_media.py;
+- README.md;
+- docs/ARCHITECTURE.md;
+- docs/SECURITY.md;
+- docs/DEPLOYMENT.md;
+- docs/OPERATIONS.md;
+- docs/STATUS.md.
+
+### Implementação e decisões de segurança
+
+Dependência nova: argon2-cffi==25.1.0, somente na imagem. Argon2id explícito:
+m=19456 KiB, t=2, p=1, salt=16 bytes e hash=32 bytes, mínimo ADR/OWASP com
+memória limitada por verificação. APIs e versão consultadas nas fontes
+primárias listadas em ARCHITECTURE; instalação/imports aguardavam build na
+implementação inicial. Build e suíte foram posteriormente aprovados pelo operador.
+
+Tabelas adicionais: users (username normalizado/único, hash, role admin/viewer,
+active e timestamps UTC); auth_sessions (FK usuário, hash SHA-256 do token,
+CSRF secreto, criação, atividade, expiração absoluta e revoked); login_challenges
+(hashes separados de cookie/CSRF, criação e expiração); login_limits (chave
+hash, contador e expiração). create_all incremental preserva screens e
+media_assets, sem Alembic, recriação ou alteração do banco real nesta sessão.
+
+Bootstrap: python -m app.scripts.bootstrap_admin no container, interativo,
+sem argumentos, com getpass/confirmação e recusa de terminal sem entrada
+oculta. Username trim/lowercase ASCII de 3–64 caracteres; senha de 16–128
+caracteres e três classes entre minúsculas/maiúsculas/números/símbolos.
+BEGIN IMMEDIATE serializa concorrência, recusa usuário existente ou qualquer
+admin já criado; não sobrescreve nem cria conta no startup. Comando previsto
+somente para o operador, após testes, backup e transporte seguro:
+
+```bash
+sudo docker compose exec -it signage-app python -m app.scripts.bootstrap_admin
+```
+
+Esse comando não foi executado pelo Codex em produção. Testes do bootstrap
+foram definidos exclusivamente com engine SQLite temporário. Posteriormente,
+o operador confirmou a criação do primeiro administrador com sucesso.
+
+GET /admin/login cria desafio persistente de 10min; cookie/CSRF independentes
+com 256 bits cada, armazenados como hashes. POST valida CSRF e consome o
+desafio atomicamente, inclusive em falha de senha; sucesso gera nova sessão
+opaca com 256 bits, nunca reaproveita pré-sessão. Corpo de login urlencoded
+limitado a 8 KiB/três campos únicos, sem reflexão de senha em erros.
+POST /admin/logout exige sessão/CSRF, revoga no banco e expira os cookies.
+
+Middleware ASGI verifica transporte e usuário ativo admin antes de ler
+corpos de caminhos protegidos, incluindo acesso direto a todas as ações.
+API exige X-CSRF-Token antes de ler JSON; dependência compartilhada confere
+CSRF HTML de criação/edição/toggle/upload/logout antes dos serviços.
+GET /admin/csrf entrega o token somente ao admin autenticado em JSON no-store.
+CSRF é validado com comparação resistente a diferenças de tempo; tokens não
+são aceitos em URL/query string. Formulários incluem campo oculto e Sair usa POST.
+
+Cookies HTTPS __Host-signage-session/__Host-signage-login, Secure por padrão,
+HttpOnly, SameSite=Lax, Path=/, sem Domain. Modo local usa nomes distintos.
+Timeout absoluto 8h, inatividade 30min, conferidos no servidor. Mutações
+autorizadas bem-sucedidas renovam atividade a cada 5min, sem estender prazo
+absoluto. GETs protegidos e acessos negados não escrevem no SQLite ou mídias;
+leituras contínuas não renovam inatividade. GET login é a criação de desafio
+explicitamente exigida pelo fluxo CSRF. Logout invalida cópia do mesmo cookie,
+sem revogar outras sessões da conta; expiradas/revogadas não autorizam acesso.
+
+Brute force: 5 tentativas/conta e 20/origem em janela fixa de 15min, persistentes,
+inclusive logins corretos; 429 genérico ao atingir limite. Reservas são atômicas
+antes de verificar Argon2, sem lock durante hashing; usuário inexistente usa
+hash fictício em memória e mensagem genérica como usuário inválido/inativo.
+Origem usa request.client; X-Forwarded-For não é lido diretamente. Limpeza de
+desafios/limites/sessões expirados tem teto de 100 registros por operação.
+Senha, cookie, CSRF e hashes não são registrados; Uvicorn sem access log e
+erros SQL de autenticação têm resposta genérica, sem traceback/parâmetros.
+
+### Mudanças intencionais de contrato HTTP
+
+| Acesso em transporte permitido | Resultado implementado |
+|---|---|
+| GET /admin, telas, mídias ou /admin/csrf sem sessão | 303 para /admin/login |
+| POST administrativo sem sessão | 401, sem executar ação |
+| API de telas, inclusive GET, sem sessão | 401 JSON |
+| Download de mídia sem sessão | 401 JSON |
+| Usuário ativo com papel insuficiente | 403 |
+| Escrita autenticada sem CSRF válido | 403, sem mutação |
+| Login com credencial incorreta/inativa/inexistente | 401 com mensagem genérica |
+| Login limitado | 429 com mensagem genérica |
+| Login/áreas protegidas em HTTP com Secure=true | 503, sem emitir cookie |
+| Saúde / e /health; CSS necessário | Permanecem públicos |
+| /docs, /redoc, /openapi.json | Permanecem desabilitados (404) |
+
+Semântica funcional das rotas autorizadas é preservada, inclusive FileResponse,
+HTTP Range 206/416/400, uploads e administração de telas. Escape HTML, CSP
+de arquivos e nosniff preservados; HTML sensível recebe CSP compatível com
+CSS/img/video local. Respostas protegidas têm Cache-Control: no-store.
+
+### Testes definidos e verificações da implementação inicial
+
+149 casos anteriores preservados: 2 base, 21 API de telas, 43 administrativos
+e 83 mídias. Cliente de regressão usa login real em HTTPS simulado e CSRF,
+sem override de autorização. Testes de persistência foram adaptados para
+login apropriado; assertivas funcionais anteriores mantidas. 118 novos casos
+cobrem bootstrap/concorrência/entrada oculta, Argon2id, login genérico,
+pré-sessão/CSRF/replay/concorrência, entropia/hashes/cookies, limites persistentes
+e expiração, rotas anônimas/roles, negação sem mutação, CSRF API/formulários,
+logout/cookie copiado, inatividade/expiração absoluta, frequência de atividade,
+GET sem escrita, persistência de sessão, URLs sem autenticação, saúde/docs,
+configuração HTTP insegura e preservação de tabelas/registros anteriores.
+Engine, diretório de mídias, configuração e relógio são isolados nos testes.
+
+Executado pelo Codex na sessão de implementação inicial:
+
+- ast.parse em 28 arquivos Python: aprovado;
+- contagem por inspeção AST: 267 casos definidos, sem coleta pytest;
+- docker compose config --quiet: aprovado sem sudo/daemon;
+- comparação Compose normalizado com HEAD: serviço único, portas, volumes,
+  redes, healthcheck, restart, container_name, build e variáveis anteriores
+  preservados; tag 006 e configuração de autenticação validadas;
+- AuthSettings via runpy/biblioteca padrão: 3 configurações válidas e
+  9 recusas de configuração insegura/contraditória, aprovadas;
+- revisão de diffs/arquivos novos e git diff --check: aprovados.
+
+Preservação estática adicional: 20 arquivos de banco/schemas/API/serviços,
+testes base, regras, ADRs e prompts permanecem idênticos a HEAD; classes
+Screen/MediaAsset e funções dos testes anteriores preservadas, sem skip/xfail.
+Whitespace dos oito arquivos novos também aprovado. A primeira checagem
+no-index interpretou exit 1 (arquivos diferentes) como erro; o script foi
+corrigido e reexecutado, sem erro de whitespace ou alteração de aplicação.
+
+Resultado pytest da implementação inicial: **0 executados, 0 aprovações runtime**;
+falhas/warnings de teste não avaliados. Build, coleta/suíte em container,
+imports, geração real de cookies, Argon2id runtime, HTTP, logs e navegador
+não executados pelo Codex naquela ocasião pela restrição sudo. Não houve
+instalação de dependências no host para contornar. Os 149 passed/1 warning da
+ETAPA 005 eram resultados históricos do operador, não regressão da ETAPA 006
+naquele momento. Posteriormente, o operador executou a suíte da ETAPA 006:
+267 passed, 1 warning em 172.98 segundos, sem falhas, conforme seção seguinte.
+
+### Docker, transporte, riscos e pendências da implementação inicial
+
+Imagem definida digital-signage:etapa006, ainda não construída naquela sessão
+de implementação; posteriormente construída e aprovada pelo operador.
+Um signage-app, UID/GID 10001, signage-data e signage-media, healthcheck e
+binding preservados. .env.example/Compose documentam Secure/local mode,
+binding declarado, IPs de proxy confiável, timeouts, janela e limites de login.
+FORWARDED_ALLOW_IPS vazio na imagem/Compose significa nenhuma confiança em
+headers encaminhados; aceita apenas IPs específicos, nunca '*'.
+Configuração validada antes de criar tabelas, sem downgrade automático.
+
+Institucional exige HTTPS válido. Exceção temporária exige escolha e alteração
+manual pelo operador: binding efetivo 127.0.0.1:8080, Secure=false,
+LOCAL_AUTH_TEST_MODE=true, nenhum proxy confiável, Host local e acesso por SSH.
+A aplicação não inspeciona daemon/túnel; confirmar ports reais é obrigatório.
+O binding HTTP da LAN aceito na ETAPA 005 não autoriza transmissão de credenciais
+ou cookies na ETAPA 006. Nenhum TLS/proxy/certificado foi instalado aqui.
+
+Pendências ao final da implementação inicial (histórico): build/suíte completa
+e quantidade/falhas/warnings reais;
+transporte seguro/binding/cookies efetivos; backup conjunto e restauração;
+bootstrap pelo operador, login/limites/CSRF/autorização/logout/expiração no
+navegador/API; Range autorizado e persistência de usuário/sessão/dados após
+restart/recriação, preservando TV Piloto, TV do Pátio e mídias anteriores;
+healthy/logs e registro das evidências operacionais em STATUS.
+Build, suíte, transporte local/binding/cookies, bootstrap, autenticação,
+autorização/CSRF/logout, persistência e Range foram posteriormente confirmados
+pelo operador nos limites dos resultados da seção seguinte. Backup conjunto
+e restauração continuam sem evidência de execução. A persistência após restart
+respeitando expiração foi aprovada conforme checklist, sem registro de
+medições manuais adicionais de cada timeout ou dos limites de login.
+
+Riscos remanescentes: sem HTTPS institucional, MFA, recuperação web, auditoria
+completa ou autorização específica para TV Boxes; limitação simples sujeita
+a bloqueio deliberado de conta/origem e consumo de recursos sob carga;
+desafios/volumes sem quota global, limpeza limitada sem job automático.
+Backup SQLite contém hashes e segredos CSRF, exigindo acesso restrito.
+Compatibilidade com TV Boxes permanece pendente. Na implementação inicial
+não havia resultado de regressão runtime; a suíte posteriormente executada
+pelo operador permaneceu integralmente aprovada. Isso não libera uso institucional.
+
+Próximo passo indicado naquela ocasião: operador auditar diff, executar
+build/pytest, selecionar transporte seguro e validar o checklist de OPERATIONS,
+registrando evidências antes do versionamento. A validação foi posteriormente
+concluída conforme abaixo; os próximos passos atuais estão no início deste
+documento. Nenhuma etapa seguinte foi iniciada nesta atualização.
+
+Nenhum git add, commit ou push; nenhuma branch criada ou histórico alterado.
+Nenhum bootstrap/login no banco real pelo Codex, instalação de dependências
+no host, mudança de .env/binding efetivo, firewall, SSH, sudoers, rede,
+daemon Docker ou serviços externos. Nenhuma cópia alternativa do projeto,
+remoção de volumes ou funcionalidade fora da ETAPA 006.
+
+## Validação operacional da ETAPA 006
+
+ETAPA 006 — Autenticação, autorização e segurança administrativa — concluída
+e validada com sucesso pelo operador no ambiente local de testes por túnel SSH.
+Fonte das evidências: resultados reais fornecidos pelo operador nesta
+solicitação, registrados documentalmente em **2026-10-15**. Essa é a data do
+registro, sem atribuir uma data de execução não informada.
+
+Todos os comandos Docker, testes automatizados, bootstrap, requisições HTTP e
+verificações pelo navegador desta seção foram executados ou confirmados pelo
+operador. **O Codex não os executou nem reexecutou nesta atualização documental.**
+As verificações do Codex nesta atualização se limitam à documentação e ao Git.
+
+### Build, Docker e transporte confirmados pelo operador
+
+- `sudo docker compose config --quiet`: aprovado;
+- `sudo docker compose build`: aprovado;
+- imagem: `digital-signage:etapa006`;
+- container: `digital-signage-app`, estado `healthy`;
+- logs apresentados: inicialização sem erros;
+- binding efetivo: `127.0.0.1:8080`;
+- acesso administrativo realizado através de túnel SSH;
+- nenhuma exposição direta do serviço HTTP à rede institucional no ambiente
+  validado.
+
+Configuração temporária informada pelo operador, sem leitura ou alteração do
+`.env` pelo Codex nesta atualização:
+
+```text
+SIGNAGE_BIND_IP=127.0.0.1
+SIGNAGE_PORT=8080
+SESSION_COOKIE_SECURE=false
+LOCAL_AUTH_TEST_MODE=true
+```
+
+Destina-se exclusivamente aos testes locais através de túnel SSH. A aprovação
+desse ambiente não constitui liberação para uso institucional amplo.
+
+### Testes automatizados executados pelo operador
+
+Comando executado:
+
+```bash
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+```
+
+Resultado real: **267 passed, 1 warning**, duração **172.98 segundos**,
+**nenhuma falha**. Warning de depreciação Starlette/AnyIO, sem impedir a
+aprovação; nenhuma correção de código ou dependências nesta atualização.
+Todos os testes anteriores permaneceram aprovados. A contagem estática
+anterior de 149 casos preservados e 118 novos foi sucedida por esse resultado
+real da suíte em container. Os resultados manuais abaixo são registrados
+separadamente e não compõem os 267 testes pytest.
+
+### Autenticação e autorização confirmadas pelo operador
+
+| Verificação | Resultado real |
+|---|---|
+| GET `/health` | HTTP 200 |
+| GET `/admin/screens` sem sessão | HTTP 303, redirecionando para `/admin/login` |
+| GET `/api/screens` sem sessão | HTTP 401 |
+| GET `/media/1/file` sem sessão | HTTP 401 |
+| Criação do primeiro administrador pelo operador | Aprovada |
+| Login com credenciais corretas | Aprovado |
+| Login com senha incorreta | Acesso recusado |
+| Logout | Aprovado |
+| Acesso administrativo após logout | Exige nova autenticação |
+
+### Validação manual pelo navegador
+
+O operador confirmou a aprovação dos 18 itens:
+
+1. Página de login acessível sem autenticação: aprovado.
+2. Login correto: aprovado.
+3. Senha incorreta recusada: aprovado.
+4. Painel de telas protegido: aprovado.
+5. Painel de mídias protegido: aprovado.
+6. API de telas sem sessão retorna 401: aprovado.
+7. Download de mídia sem sessão retorna 401: aprovado.
+8. Administrador autenticado consegue editar telas: aprovado.
+9. Administrador autenticado consegue cadastrar mídia: aprovado.
+10. Escrita na API sem token CSRF retorna 403: aprovado.
+11. Logout encerra a sessão: aprovado.
+12. Acesso após logout exige login novamente: aprovado.
+13. Cookies conferidos no navegador: aprovado.
+14. HTTP Range de MP4 com sessão válida: aprovado.
+15. TV Piloto, TV do Pátio e mídias anteriores preservadas: aprovado.
+16. Dados e sessão persistem após restart, respeitando as regras implementadas
+    de expiração: aprovado conforme checklist do operador.
+17. Recriação do container preserva usuários, telas e mídias: aprovado.
+18. Interface utilizável em computador e janela estreita: aprovado.
+
+### Resultados complementares de segurança no navegador
+
+Evidências específicas do operador, detalhando os itens 10, 13 e 14:
+
+| Verificação manual | Resultado real |
+|---|---|
+| Escrita autenticada sem `X-CSRF-Token` (item 10) | HTTP 403; proteção CSRF confirmada |
+| Cookies em HTTP local (item 13) | HttpOnly habilitado; SameSite=Lax; Secure desabilitado conforme configuração temporária |
+| Transporte de rede do teste local | Túnel SSH |
+| MP4 com sessão válida e `Range: bytes=0-99` (item 14) | HTTP 206 Partial Content; 100 bytes recebidos |
+
+O resultado de cookies refere-se ao modo local com Secure=false; não comprova
+implantação HTTPS institucional. O item 16 é a confirmação do checklist do
+operador, sem acrescentar medições manuais individuais de timeout. Range
+206/416/400 tem cobertura automatizada descrita no registro de implementação;
+o resultado manual específico da ETAPA 006 é 206 com 100 bytes.
+Restart/recriação confirmam persistência, não execução de restauração.
+
+### Segurança, limitações e pendências remanescentes
+
+Não há liberação para uso institucional amplo. Antes dessa disponibilização,
+permanecem necessários:
+
+- HTTPS com certificado válido;
+- `SESSION_COOKIE_SECURE=true`;
+- `LOCAL_AUTH_TEST_MODE=false`;
+- revisão das políticas de acesso;
+- definição de autenticação específica para os futuros players das TV Boxes.
+
+Validação de backup/restauração conjunta, MFA, recuperação administrativa e
+auditoria de operações permanecem trabalhos futuros conforme decisões
+existentes. Não houve evidência do operador de execução de backup conjunto ou
+teste de restauração nesta validação. O backup SQLite anterior à ETAPA 005
+continua registrado apenas com o alcance daquela evidência histórica.
+Compatibilidade com TV Boxes também depende de validação específica futura.
+
+O warning Starlette/AnyIO permanece registrado sem falhas e sem correção
+nesta atualização. As demais limitações de recursos, quotas, limpeza e acesso
+a backups descritas em SECURITY e no histórico da implementação permanecem.
+
+### Registro desta atualização documental
+
+- Arquivos criados: nenhum.
+- Arquivos alterados nesta atualização: README.md, docs/STATUS.md,
+  docs/SECURITY.md, docs/OPERATIONS.md, docs/ARCHITECTURE.md e docs/DEPLOYMENT.md.
+- Decisões: registrar os resultados fornecidos pelo operador; separar suíte
+  automatizada, checklist manual e verificações complementares; encerrar as
+  pendências operacionais efetivamente resolvidas, preservando o bloqueio sudo
+  e a ausência de execução pelo Codex na implementação inicial como histórico.
+- Verificações documentais pelo Codex: diff revisado; `git diff --check`
+  aprovado, sem saída e com código 0; comparação com o início da atualização
+  confirmou os 68 demais arquivos versionados ou não ignorados intactos,
+  além de HEAD e diff do índice inalterados. Testes operacionais e
+  automatizados não reexecutados.
+- Problema informado na validação: 1 warning de depreciação Starlette/AnyIO;
+  nenhuma falha na suíte.
+- Pendências: requisitos institucionais e trabalhos futuros listados acima;
+  não permanecem pendentes build, pytest, bootstrap, login, CSRF, cookies,
+  Range ou validação operacional no ambiente local confirmado.
+- Próximo passo recomendado: revisão do diff documental pelo operador e
+  preparação dos requisitos institucionais e da validação de backup/restauração,
+  sem iniciar uma nova etapa nesta atualização.
+
+Alterações preexistentes de implementação no working tree preservadas.
+Nenhuma alteração funcional, de código Python, testes, Dockerfile,
+compose.yaml, `.env`, credenciais ou registros do banco nesta atualização.
+Nenhuma mudança operacional no servidor ou início da próxima etapa.
+Nenhum `git add`, `git commit` ou `git push` executado.

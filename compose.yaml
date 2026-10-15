@@ -2,7 +2,7 @@ name: digital-signage
 
 services:
   signage-app:
-    image: digital-signage:etapa005
+    image: digital-signage:etapa006
     build: .
     container_name: digital-signage-app
     restart: unless-stopped
@@ -16,6 +16,18 @@ services:
       MAX_IMAGE_FRAMES: "${MAX_IMAGE_FRAMES:-100}"
       MAX_IMAGE_TOTAL_PIXELS: "${MAX_IMAGE_TOTAL_PIXELS:-100000000}"
       FFPROBE_TIMEOUT_SECONDS: "${FFPROBE_TIMEOUT_SECONDS:-15}"
+      SIGNAGE_BIND_IP: "${SIGNAGE_BIND_IP:-127.0.0.1}"
+      SIGNAGE_PORT: "${SIGNAGE_PORT:-8080}"
+      SESSION_COOKIE_SECURE: "${SESSION_COOKIE_SECURE:-true}"
+      LOCAL_AUTH_TEST_MODE: "${LOCAL_AUTH_TEST_MODE:-false}"
+      FORWARDED_ALLOW_IPS: "${FORWARDED_ALLOW_IPS:-}"
+      SESSION_ABSOLUTE_SECONDS: "${SESSION_ABSOLUTE_SECONDS:-28800}"
+      SESSION_IDLE_SECONDS: "${SESSION_IDLE_SECONDS:-1800}"
+      SESSION_TOUCH_SECONDS: "${SESSION_TOUCH_SECONDS:-300}"
+      LOGIN_CHALLENGE_SECONDS: "${LOGIN_CHALLENGE_SECONDS:-600}"
+      LOGIN_ATTEMPT_WINDOW_SECONDS: "${LOGIN_ATTEMPT_WINDOW_SECONDS:-900}"
+      LOGIN_ACCOUNT_ATTEMPTS: "${LOGIN_ACCOUNT_ATTEMPTS:-5}"
+      LOGIN_ORIGIN_ATTEMPTS: "${LOGIN_ORIGIN_ATTEMPTS:-20}"
     volumes:
       - signage-data:/app/data
       - signage-media:/app/media

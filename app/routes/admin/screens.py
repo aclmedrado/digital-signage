@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_session
 from app.schemas import ScreenCreate, ScreenUpdate
+from app.security import require_form_csrf
 from app.services import screens
 
-router = APIRouter(prefix="/admin")
+router = APIRouter(prefix="/admin", dependencies=[Depends(require_form_csrf)])
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
 slug_pattern = ScreenCreate.model_json_schema()["properties"]["slug"]["pattern"]
 notices = {
