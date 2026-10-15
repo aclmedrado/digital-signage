@@ -104,9 +104,10 @@ As rotas JSON existentes, /health e seu healthcheck foram preservados.
 SQLite, DATABASE_URL, esquema, volume signage-data e usuário não-root não
 mudaram. Jinja2 e python-multipart são instalados somente na imagem; o
 .dockerignore inclui os templates e o CSS no contexto de build. A imagem
-dessa etapa era digital-signage:etapa004; a imagem atual
-digital-signage:etapa006 foi construída e validada operacionalmente pelo
-operador, conforme registro da ETAPA 006 abaixo.
+dessa etapa era digital-signage:etapa004; digital-signage:etapa006 foi
+construída e validada operacionalmente pelo operador. A imagem atual
+digital-signage:etapa007 também foi construída e validada operacionalmente
+pelo operador, conforme registro da ETAPA 007 abaixo.
 
 Na ETAPA 004 não havia autenticação ou autorização na interface nem na API.
 O uso naquela fase era restrito ao ambiente interno controlado, sem exposição
@@ -300,15 +301,114 @@ em [STATUS](STATUS.md#validação-operacional-da-etapa-006).
 A conclusão operacional se restringe a esse teste local. Antes de uso
 institucional amplo: HTTPS com certificado válido, SESSION_COOKIE_SECURE=true,
 LOCAL_AUTH_TEST_MODE=false, revisão das políticas de acesso e definição da
-autenticação específica dos futuros players das TV Boxes. Backup/restauração
-conjunta continuam sem confirmação; MFA, recuperação administrativa e auditoria
-de operações permanecem trabalhos futuros. Não há player nesta etapa.
+autenticação específica dos futuros players das TV Boxes. Na validação da
+ETAPA 006, backup/restauração conjunta ainda não tinham confirmação; o backup
+anterior à ETAPA 007 foi posteriormente informado, conforme abaixo. Restauração
+formal, MFA, recuperação administrativa e auditoria de operações permanecem
+trabalhos futuros. Não há player nesta etapa.
 
 Referências: [argon2-cffi](https://pypi.org/project/argon2-cffi/25.1.0/),
 [API Argon2](https://argon2-cffi.readthedocs.io/en/stable/api.html),
 [OWASP senhas](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html),
 [OWASP login CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 e [Uvicorn](https://www.uvicorn.org/settings/).
+
+## Implementação da ETAPA 007
+
+Conforme ADR 0007, adicionam-se três tabelas, sem alterar Screen, MediaAsset
+ou o contrato JSON da API de telas:
+
+- `playlists`: id inteiro; name obrigatório, aparado, de 1–200 caracteres,
+  sem unicidade; description opcional até 1000 caracteres; active com padrão
+  true; created_at/updated_at UTC. CHECKs de comprimento no SQLite.
+- `playlist_items`: id próprio; FKs obrigatórias para playlist e mídia,
+  indexadas; position inteiro positivo; UNIQUE(playlist_id, position);
+  duration_seconds NULL ou inteiro de 5–600; created_at UTC. CHECKs usam
+  typeof para impedir posições e durações fracionárias no SQLite.
+- `screen_playlist_assignments`: screen_id é PK e FK para screens, garantindo
+  no máximo um vínculo por tela; playlist_id é FK indexada, sem unicidade;
+  assigned_at/updated_at UTC. Trocar a playlist preserva assigned_at e
+  Screen.active; desvincular remove somente essa linha.
+
+Os novos modelos são importados pelos serviços/routers antes do create_all
+existente no lifespan, que cria apenas tabelas ausentes, sem migração destrutiva.
+make_engine agora registra PRAGMA foreign_keys=ON no evento connect e verifica
+se o valor é 1 em cada conexão. Na implementação inicial, a engine anterior
+não configurava esse PRAGMA e o SQLite temporário do host retornou 0, sem
+medição da engine implantada pelo Codex. Posteriormente, o operador confirmou
+na engine implantada `Foreign keys habilitadas: True` e identificou as tabelas
+`playlists`, `playlist_items` e `screen_playlist_assignments`.
+
+app/services/playlists.py concentra regras e transações. BEGIN IMMEDIATE
+adquire a reserva de escrita SQLite antes de validar estado, contar itens ou
+ler vínculos, serializando também associação versus remoção/desativação.
+Commit é único por operação; erros fazem rollback. IntegrityError e
+OperationalError retornam conflito compreensível (409); outros erros
+SQLAlchemy retornam indisponibilidade genérica (503), sem parâmetros SQL.
+Não há locks externos. Erros de campos são 422, ausentes são 404.
+
+Itens entram no final, até 100 incluindo repetições. Para imagens, a duração
+vazia/ausente usa 15 segundos e só aceita inteiros 5–600; vídeos persistem NULL
+e recusam qualquer campo de duração enviado. A validação depende do kind da
+mídia carregada dentro da transação. Não há cópia ou transformação de arquivos.
+O swap usa posição auxiliar max(position)+1 e três flushes; a remoção faz
+flush do DELETE e compacta sucessores em ordem crescente, com um flush por
+item para respeitar UNIQUE inclusive durante a operação. Sucessos mantêm
+posições 1..N; os limites de subir/descer não modificam os dados.
+
+Playlist vazia pode ser criada/editada; somente ativa e não vazia pode ser
+associada. Uma playlist associada não pode ser desativada nem perder seu
+último item. Editar nome/descrição, adicionar e reordenar permanecem possíveis
+quando inativa ou associada. A mesma mídia pode se repetir; várias telas podem
+compartilhar uma playlist. Não há exclusão de playlists ou mídias nesta etapa.
+
+app/routes/admin/playlists.py acrescenta catálogo, criação, edição, detalhe,
+toggle, adição/remoção/subir/descer e associação/desassociação na tela, sob
+/admin. Templates novos usam base.html e CSS local. A inclusão tem formulários
+separados para imagem e vídeo, sem JavaScript e sem duração editável para vídeo.
+Erros esperados são HTML com valores preservados; sucesso usa POST → 303 → GET.
+A lista de telas mostra playlist atual ou Sem playlist e link de gerenciamento.
+Todos os GETs funcionais são de leitura; todos os POSTs usam require_form_csrf
+e o middleware existente exige usuário ativo admin antes de ler corpos.
+Os handlers que leem formulários assincronamente executam mutações no threadpool.
+
+Na implementação, Compose mudou apenas a tag para digital-signage:etapa007 e
+.dockerignore incluiu o diretório dos templates, sem novas dependências,
+serviços, volumes ou mudança de binding/usuário/healthcheck pelo Codex.
+O operador construiu e implantou a imagem no container digital-signage-app,
+preservando o serviço único signage-app, SQLite/mídias e o binding de teste
+127.0.0.1:8080 com túnel SSH. Restart retornou healthy; force-recreate foi
+executado, com persistência de playlists, itens e associações confirmada
+após ambos os ciclos. Não há player, manifesto, API de dispositivos,
+credenciais de TV Boxes ou agendamento. As associações são somente
+configuração central; não comprovam reprodução em TV.
+
+Há 39 novas funções de teste com parametrizações em tests/test_playlists.py.
+A expectativa de tabelas no teste anterior de autenticação foi ampliada para
+as três novas tabelas, preservando a comparação dos dados anteriores.
+A implementação inicial teve apenas verificações estáticas e controles locais
+limitados pelo Codex, devido ao bloqueio sudo preservado no histórico.
+Posteriormente, o operador aprovou config/build e executou a suíte completa:
+**439 passed, 1 warning em 515.73 segundos (8min35s)**, sem falhas. Warning
+conhecido de depreciação Starlette/AnyIO; autenticação, API, telas e biblioteca
+multimídia anteriores continuam aprovadas. Separadamente, confirmou os
+**20/20 itens manuais** de configuração e associação, incluindo regras de
+negócio, autenticação/CSRF e persistência. A ETAPA 007 está implementada e
+validada operacionalmente pelo operador no ambiente local com túnel SSH.
+
+Antes da implantação, o operador criou
+`/home/administrador/signage-backups/before-007-20261015-145745`, com SQLite
+consistente por API de backup, arquivos de mídia e .env fora do repositório.
+O teste formal de restauração conjunta permanece pendente. O Codex apenas
+registrou esses resultados, sem reexecutar testes ou operações e sem acessar
+backup, credenciais, sessões ou banco real nesta atualização documental.
+Evidências em [STATUS](STATUS.md#validação-operacional-da-etapa-007).
+
+Player web, integração/validação real com BTV13 e H6+ e autenticação específica
+e limitada dos dispositivos permanecem futuros. HTTPS institucional é
+necessário antes de disponibilizar o painel na rede; auditoria, recuperação
+administrativa e demais controles documentados permanecem pendentes.
+Nenhuma ETAPA 008 iniciada; não há declaração de TVs reproduzindo playlists.
 
 ## TV Box
 

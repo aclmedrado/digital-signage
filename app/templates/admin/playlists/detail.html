@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ playlist.name }}{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div><h1>{{ playlist.name }} (#{{ playlist.id }})</h1><p>{{ 'Ativa' if playlist.active else 'Inativa' }} · {{ items|length }} de 100 itens</p></div>
+    <div class="row-actions">
+      <a class="button secondary" href="{{ url_for('admin_edit_playlist', playlist_id=playlist.id) }}">Editar playlist</a>
+      <a class="button secondary" href="{{ url_for('admin_playlists') }}">Todas as playlists</a>
+      <form method="post" action="{{ url_for('admin_toggle_playlist', playlist_id=playlist.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+        <button class="button secondary" type="submit">{{ 'Desativar' if playlist.active else 'Ativar' }}</button>
+      </form>
+    </div>
+  </div>
+  {% if playlist.description %}<p class="playlist-description">{{ playlist.description }}</p>{% endif %}
+  {% if notice %}<p class="notice success" role="status">{{ notice }}</p>{% endif %}
+  {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+
+  <section aria-labelledby="items-title">
+    <h2 id="items-title">Itens na ordem de exibição</h2>
+    {% if items %}
+      <div class="table-container" tabindex="0" role="region" aria-label="Itens ordenados da playlist">
+        <table>
+          <caption class="visually-hidden">Ordem, mídias, duração e ações dos itens</caption>
+          <thead><tr><th scope="col">Posição</th><th scope="col">Mídia</th><th scope="col">Tipo</th><th scope="col">Duração</th><th scope="col">Ações</th></tr></thead>
+          <tbody>
+          {% for item, asset in items %}
+            <tr>
+              <td>{{ item.position }}</td>
+              <th scope="row">{{ asset.title }}<br><small>{{ asset.original_filename }}</small></th>
+              <td>{{ 'Vídeo' if asset.kind == 'video' else 'Imagem' }}</td>
+              <td>{% if asset.kind == 'video' %}Reprodução integral ({{ '%.2f'|format(asset.duration_seconds) }} s){% else %}{{ item.duration_seconds }} segundos{% endif %}</td>
+              <td><div class="row-actions">
+                <form method="post" action="{{ url_for('admin_move_playlist_item_up', playlist_id=playlist.id, item_id=item.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+                  <button class="button secondary" type="submit" aria-label="Subir item {{ item.position }}: {{ asset.title }}" {% if loop.first %}disabled{% endif %}>Subir</button>
+                </form>
+                <form method="post" action="{{ url_for('admin_move_playlist_item_down', playlist_id=playlist.id, item_id=item.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+                  <button class="button secondary" type="submit" aria-label="Descer item {{ item.position }}: {{ asset.title }}" {% if loop.last %}disabled{% endif %}>Descer</button>
+                </form>
+                <form method="post" action="{{ url_for('admin_remove_playlist_item', playlist_id=playlist.id, item_id=item.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+                  <button class="button secondary" type="submit" aria-label="Remover item {{ item.position }}: {{ asset.title }}">Remover</button>
+                </form>
+              </div></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<p>Nenhum item. Adicione uma mídia antes de associar a playlist.</p>{% endif %}
+  </section>
+
+  <section aria-labelledby="add-title">
+    <h2 id="add-title">Adicionar mídia existente</h2>
+    <p>Itens são adicionados ao final. Repetições são permitidas. Remover um item preserva a mídia do catálogo.</p>
+    {% for kind, label in [('video', 'vídeo'), ('image', 'imagem')] %}
+      {% set choices = assets|selectattr('kind', 'equalto', kind)|list %}
+      {% if choices %}
+        <form class="form-panel playlist-add" method="post" action="{{ url_for('admin_add_playlist_item', playlist_id=playlist.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+          <div class="field">
+            <label for="media-{{ kind }}">Selecionar {{ label }}</label>
+            <select id="media-{{ kind }}" name="media_id" required>
+              <option value="">Selecione uma mídia</option>
+              {% for asset in choices %}<option value="{{ asset.id }}" {% if values.media_id|string == asset.id|string %}selected{% endif %}>#{{ asset.id }} · {{ asset.title }} · {{ asset.original_filename }}</option>{% endfor %}
+            </select>
+          </div>
+          {% if kind == 'image' %}
+            <div class="field">
+              <label for="duration">Duração da imagem em segundos</label>
+              <input type="number" id="duration" name="duration_seconds" min="5" max="600" step="1" value="{{ values.duration_seconds if values.duration_seconds is not none else '' }}" aria-describedby="duration-help">
+              <p class="field-help" id="duration-help">De 5 a 600 segundos. Campo vazio usa 15 segundos, inclusive para GIF e WebP animados.</p>
+            </div>
+          {% else %}<p>Reprodução integral do vídeo, sem recorte ou duração editável.</p>{% endif %}
+          <button class="button" type="submit">Adicionar {{ label }}</button>
+        </form>
+      {% endif %}
+    {% endfor %}
+    {% if not assets %}<p>Nenhuma mídia disponível. <a href="{{ url_for('admin_new_media') }}">Cadastrar mídia</a>.</p>{% endif %}
+  </section>
+
+  <section aria-labelledby="screens-title">
+    <h2 id="screens-title">Telas associadas ({{ screens|length }})</h2>
+    {% if screens %}<ul>{% for screen in screens %}<li>{{ screen.name }} (#{{ screen.id }}) · <a href="{{ url_for('admin_screen_playlist', screen_id=screen.id) }}">Gerenciar associação</a></li>{% endfor %}</ul>
+    {% else %}<p>Nenhuma tela associada.</p>{% endif %}
+    <a href="{{ url_for('admin_screens') }}">Escolher uma tela para associar</a>
+  </section>
+{% endblock %}

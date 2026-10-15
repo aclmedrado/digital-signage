@@ -585,4 +585,5 @@ def test_existing_schema_and_records_survive_auth_tables(isolated_database):
         after = [connection.execute(model.__table__.select()).all() for model in (Screen, MediaAsset)]
     assert after == before
     assert set(inspect(isolated_database).get_table_names()) == {
-        "screens", "media_assets", "users", "auth_sessions", "login_challenges", "login_limits"}
+        "screens", "media_assets", "users", "auth_sessions", "login_challenges", "login_limits",
+        "playlists", "playlist_items", "screen_playlist_assignments"}

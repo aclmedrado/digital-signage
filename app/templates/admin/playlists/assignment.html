@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Playlist da tela{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><h1>Playlist de {{ screen.name }}</h1><p>Tela #{{ screen.id }} · {{ 'Ativa' if screen.active else 'Inativa' }}</p></div></div>
+  {% if notice %}<p class="notice success" role="status">{{ notice }}</p>{% endif %}
+  {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+  <p>Playlist atual: {% if current %}<a href="{{ url_for('admin_playlist_detail', playlist_id=current.id) }}">{{ current.name }} (#{{ current.id }})</a>{% else %}Sem playlist{% endif %}.</p>
+  <div class="form-panel">
+    <p>Cada tela aceita uma playlist. Uma playlist pode ser compartilhada por várias telas.</p>
+    <form method="post" action="{{ url_for('admin_assign_playlist', screen_id=screen.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+      <div class="field">
+        <label for="playlist">Playlist ativa com itens</label>
+        <select id="playlist" name="playlist_id" required aria-describedby="playlist-help">
+          <option value="">Selecione uma playlist</option>
+          {% if values.playlist_id and values.playlist_id|string not in options|map(attribute='id')|map('string')|list %}
+            <option value="{{ values.playlist_id }}" selected>Opção enviada indisponível (#{{ values.playlist_id }})</option>
+          {% endif %}
+          {% for playlist in options %}<option value="{{ playlist.id }}" {% if values.playlist_id|string == playlist.id|string %}selected{% endif %}>{{ playlist.name }} (#{{ playlist.id }})</option>{% endfor %}
+        </select>
+        <p class="field-help" id="playlist-help">Playlists vazias ou inativas não podem ser associadas. A troca substitui somente o vínculo desta tela.</p>
+      </div>
+      <button class="button" type="submit">{{ 'Substituir playlist' if current else 'Associar playlist' }}</button>
+    </form>
+    {% if current %}
+      <form class="form-actions" method="post" action="{{ url_for('admin_unassign_playlist', screen_id=screen.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+        <button class="button secondary" type="submit">Desvincular playlist</button>
+      </form>
+    {% endif %}
+    <p><a href="{{ url_for('admin_screens') }}">Voltar para telas</a></p>
+  </div>
+{% endblock %}

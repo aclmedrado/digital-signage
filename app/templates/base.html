@@ -15,6 +15,7 @@
       <nav aria-label="Navegação principal">
         <a href="{{ url_for('admin_screens') }}">Telas</a>
         <a href="{{ url_for('admin_media') }}">Mídias</a>
+        <a href="{{ url_for('admin_playlists') }}">Playlists</a>
       </nav>
       <div class="account-actions">
         <span>{{ request.state.auth.username }}</span>
@@ -29,6 +30,6 @@
   <main id="conteudo" class="container">
     {% block content %}{% endblock %}
   </main>
-  <footer class="container site-footer">Administração de telas e mídias</footer>
+  <footer class="container site-footer">Administração de telas, mídias e playlists</footer>
 </body>
 </html>

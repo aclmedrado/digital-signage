@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Playlists{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div><h1>Playlists</h1><p>Organize vídeos e imagens e associe as sequências às telas.</p></div>
+    <a class="button" href="{{ url_for('admin_new_playlist') }}">Nova playlist</a>
+  </div>
+  {% if catalog %}
+    <div class="table-container" tabindex="0" role="region" aria-label="Playlists cadastradas">
+      <table>
+        <caption class="visually-hidden">Playlists, itens e telas associadas</caption>
+        <thead><tr><th scope="col">ID</th><th scope="col">Nome</th><th scope="col">Estado</th><th scope="col">Itens</th><th scope="col">Telas associadas</th><th scope="col">Ações</th></tr></thead>
+        <tbody>
+        {% for playlist, item_count, screen_count in catalog %}
+          <tr>
+            <td>{{ playlist.id }}</td><th scope="row"><a href="{{ url_for('admin_playlist_detail', playlist_id=playlist.id) }}">{{ playlist.name }}</a></th>
+            <td><span class="badge {{ 'active' if playlist.active else 'inactive' }}">{{ 'Ativa' if playlist.active else 'Inativa' }}</span></td>
+            <td>{{ item_count }}</td><td>{{ screen_count }}</td>
+            <td><div class="row-actions">
+              <a class="button secondary" href="{{ url_for('admin_playlist_detail', playlist_id=playlist.id) }}">Abrir</a>
+              <a class="button secondary" href="{{ url_for('admin_edit_playlist', playlist_id=playlist.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('admin_toggle_playlist', playlist_id=playlist.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+                <button class="button secondary" type="submit">{{ 'Desativar' if playlist.active else 'Ativar' }}</button>
+              </form>
+            </div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state"><h2>Nenhuma playlist cadastrada</h2><p>Selecione Nova playlist para começar.</p></div>
+  {% endif %}
+{% endblock %}

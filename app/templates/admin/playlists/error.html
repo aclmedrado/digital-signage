@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Não foi possível abrir o registro{% endblock %}
+{% block content %}
+  <div class="empty-state">
+    <h1>Não foi possível abrir o registro</h1>
+    <p role="alert">{{ error }}</p>
+    <div class="form-actions">
+      <a class="button" href="{{ url_for('admin_playlists') }}">Voltar para playlists</a>
+      <a class="button secondary" href="{{ url_for('admin_screens') }}">Voltar para telas</a>
+    </div>
+  </div>
+{% endblock %}

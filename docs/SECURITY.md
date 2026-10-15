@@ -105,9 +105,60 @@ e auditoria de operações; limitação simples sujeita a bloqueio deliberado
 de conta/origem, consumo de
 CPU/SQLite e criação de desafios sob carga, sem quotas globais. Limpeza é
 limitada a 100 registros expirados por operação; não há job de manutenção.
-Backup conjunto e restauração continuam sem confirmação; backups agora
-contêm hashes de senha e segredos CSRF e devem ter acesso restrito.
+O backup anterior à ETAPA 007 foi confirmado pelo operador, incluindo SQLite
+consistente, mídias e .env fora do repositório. Restauração conjunta formal
+continua sem teste; backups contêm hashes de senha, segredos CSRF e configuração
+sensível e devem ter acesso restrito.
 Compatibilidade e autorização específica de TV Boxes continuam pendentes.
+
+## Playlists e associações — ETAPA 007
+
+Implementadas e validadas operacionalmente pelo operador: config/build
+aprovados, imagem digital-signage:etapa007 e suíte com 439 passed, 1 warning
+em 515.73 segundos (8min35s), sem falhas. Warning conhecido Starlette/AnyIO;
+os testes anteriores de autenticação, API, telas e biblioteca multimídia
+continuam aprovados. Separadamente, os 20/20 itens manuais foram aprovados,
+incluindo autenticação e CSRF das operações administrativas. Os resultados
+são fornecidos pelo operador, sem execução ou reexecução pelo Codex nesta
+atualização documental; [evidências](STATUS.md#validação-operacional-da-etapa-007).
+
+Todas as novas rotas ficam sob /admin, herdando o middleware de transporte,
+sessão e papel admin. O router exige require_form_csrf em todos os POSTs;
+formulários incluem o token da sessão, sem criar outro mecanismo de segurança.
+GET administrativo anônimo mantém 303 para login; POST anônimo 401; papel
+insuficiente e CSRF inválido 403. Cookies, expiração/logout, CSP/no-store,
+upload e downloads protegidos, inclusive Range, permanecem com o código anterior.
+
+Regras são verificadas no serviço dentro de BEGIN IMMEDIATE e protegidas por
+FKs, UNIQUE e CHECKs. Playlists vazias/inativas não podem ser associadas;
+vínculos impedem desativação e remoção do último item. Limite de 100 itens,
+duração inteira 5–600 para imagens e recusa de duração enviada para vídeo.
+Erros de banco são genéricos, sem traceback ou parâmetros. Templates escapam
+nomes/descrições/metadados. Não se copiam nem apagam arquivos de mídia.
+
+O listener de conexão habilita e verifica PRAGMA foreign_keys=ON também para
+as FKs de autenticação já existentes. Os testes verificam FKs em
+múltiplas conexões, reconexão, transações, conflitos concorrentes, ausência de
+escrita em GET/negações e controles de sessão/CSRF, com a suíte aprovada pelo
+operador. Na engine implantada, o operador confirmou
+`Foreign keys habilitadas: True` e as três novas tabelas. O bloqueio sudo e a
+ausência de pytest pelo Codex na implementação inicial permanecem históricos
+em STATUS.
+
+Não há novas APIs anônimas, manifesto, player, credenciais de dispositivos,
+agendamento ou compartilhamento de cookies administrativos com TV Boxes.
+O operador confirmou binding de teste 127.0.0.1:8080 com túnel SSH, volumes
+preservados e persistência após restart/recriação. O Codex não alterou binding,
+.env, volumes ou infraestrutura nem fez inspeção operacional nesta atualização.
+Preservar 127.0.0.1:8080 com túnel SSH no teste local. Uso institucional amplo
+continua dependendo de HTTPS válido, Secure=true, LOCAL_AUTH_TEST_MODE=false,
+revisão de políticas e autenticação específica dos futuros players.
+O backup anterior à implantação está registrado em OPERATIONS e STATUS;
+nenhum conteúdo do backup ou .env foi acessado pelo Codex. O teste formal de
+restauração conjunta, MFA, recuperação administrativa e auditoria de operações
+permanecem pendentes. Player web, integração/validação real com BTV13 e H6+
+e autenticação específica e limitada dos dispositivos permanecem futuros.
+Não há declaração de TVs reproduzindo playlists nem início da ETAPA 008.
 
 ## Biblioteca de mídias — ETAPA 005
 

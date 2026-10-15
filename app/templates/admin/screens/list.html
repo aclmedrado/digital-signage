@@ -21,6 +21,7 @@
             <th scope="col">Slug</th>
             <th scope="col">Localização</th>
             <th scope="col">Estado</th>
+            <th scope="col">Playlist</th>
             <th scope="col">Ações</th>
           </tr>
         </thead>
@@ -34,6 +35,12 @@
                 <span class="badge {{ 'active' if screen.active else 'inactive' }}">
                   {{ 'Ativa' if screen.active else 'Inativa' }}
                 </span>
+              </td>
+              <td>
+                {% if playlists.get(screen.id) %}
+                  <a href="{{ url_for('admin_playlist_detail', playlist_id=playlists[screen.id].id) }}">{{ playlists[screen.id].name }} (#{{ playlists[screen.id].id }})</a>
+                {% else %}Sem playlist{% endif %}
+                <a href="{{ url_for('admin_screen_playlist', screen_id=screen.id) }}">Gerenciar playlist</a>
               </td>
               <td>
                 <div class="row-actions">

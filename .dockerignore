@@ -12,6 +12,7 @@
 !app/templates/admin/screens/
 !app/templates/admin/media/
 !app/templates/admin/auth/
+!app/templates/admin/playlists/
 !app/templates/**/*.html
 !app/static/
 !app/static/*.css

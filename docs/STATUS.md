@@ -58,7 +58,42 @@ evidências atuais em [Validação operacional da ETAPA 006](#validação-operac
 O sistema não está liberado para uso institucional amplo. HTTPS válido,
 SESSION_COOKIE_SECURE=true, LOCAL_AUTH_TEST_MODE=false, revisão das políticas
 de acesso e definição de autenticação dos futuros players continuam necessários.
-Backup/restauração conjunta permanecem sem confirmação de execução.
+Na validação da ETAPA 006 ainda não havia confirmação de backup/restauração
+conjunta. O backup anterior à ETAPA 007 foi posteriormente confirmado pelo
+operador, conforme abaixo; o teste formal de restauração permanece pendente.
+
+A ETAPA 007 está **implementada e validada operacionalmente pelo operador**
+no ambiente de testes por túnel SSH. Acrescenta playlists multimídia, itens
+ordenados e associações às telas, com autenticação, autorização e CSRF existentes.
+Imagens: 5–600 segundos, padrão 15; vídeos integrais, sem duração editável.
+Limite de 100 itens; uma playlist por tela, compartilhável entre várias telas.
+Playlists vazias/inativas não podem ser associadas; vínculos impedem desativação
+e remoção do último item. Não há player, credenciais de dispositivos ou
+agendamento. A etapa entrega somente configuração e associação, sem
+declaração de TVs reproduzindo playlists.
+
+Config/build aprovados, imagem construída digital-signage:etapa007 e suíte
+com **439 passed, 1 warning em 515.73 segundos (8min35s)**, sem falhas.
+Warning conhecido de depreciação Starlette/AnyIO; os testes anteriores de
+autenticação, API, telas e biblioteca multimídia continuam aprovados.
+Separadamente, o operador confirmou **20/20 itens manuais aprovados**.
+Serviço signage-app e container digital-signage-app preservados, executando
+etapa007, com binding 127.0.0.1:8080, túnel SSH e volumes SQLite/mídia
+preservados. Restart retornou healthy; force-recreate foi executado, com
+persistência de playlists, itens e associações confirmada após ambos os ciclos.
+
+O operador confirmou `Foreign keys habilitadas: True` na engine implantada e
+as tabelas playlists, playlist_items e screen_playlist_assignments. Criou o
+backup anterior à implantação em
+`/home/administrador/signage-backups/before-007-20261015-145745`, com SQLite
+consistente por API de backup, mídias e configuração .env fora do repositório.
+O backup não foi submetido a teste formal de restauração conjunta.
+
+Esses resultados foram executados ou confirmados e fornecidos pelo operador;
+o Codex não os executou nem reexecutou nesta atualização exclusivamente
+documental. O bloqueio sudo e os controles limitados da implementação inicial
+permanecem no histórico. Evidências consolidadas em
+[Validação operacional da ETAPA 007](#validação-operacional-da-etapa-007).
 
 ## Implementado
 
@@ -95,15 +130,23 @@ Backup/restauração conjunta permanecem sem confirmação de execução.
 - cookies Secure por padrão, timeouts absoluto/inatividade e limitação de login;
 - configuração de transporte validada, no-store e proteção antes de ler corpos;
 - novos testes isolados e regressão adaptada com login/CSRF reais.
+- Playlist, PlaylistItem e ScreenPlaylistAssignment com FKs, UNIQUE e CHECKs;
+- playlists com criação/edição, ativação, itens multimídia e ordenação por POST;
+- associação/substituição/desassociação por tela, compartilhamento de playlist;
+- transações BEGIN IMMEDIATE, swap com posição auxiliar e compactação segura;
+- PRAGMA foreign_keys=ON habilitado/verificado por conexão SQLite;
+- novas páginas HTML protegidas e navegação Telas/Mídias/Playlists;
+- testes de playlists e regressão da suíte completa aprovados pelo operador:
+  439 passed; validação manual de configuração/associação: 20/20 aprovados.
 
 ## Ainda não implementado
 
 - HTTPS institucional e configuração operacional de transporte seguro;
 - MFA, recuperação de conta e auditoria completa (fora da ETAPA 006);
 - ingestão/exibição segura de SVG;
-- playlists e associação mídia-tela;
 - player web;
-- integração com TV Box;
+- integração e validação real com BTV13 e H6+;
+- autenticação específica e limitada dos dispositivos;
 - Chromium kiosk;
 - agendamento;
 - grupos de telas;
@@ -140,15 +183,21 @@ Operações administrativas do Docker devem utilizar `sudo`.
 
 ## Próximo passo recomendado
 
-Auditoria do diff documental pelo operador. Antes da disponibilização
-institucional: HTTPS com certificado válido, SESSION_COOKIE_SECURE=true,
+Auditar o fechamento documental da ETAPA 007. Permanecem o teste formal de
+restauração conjunta de SQLite e mídias, o planejamento futuro de player web,
+integração/validação real com BTV13 e H6+ e autenticação específica e limitada
+dos dispositivos. A ETAPA 008 não foi iniciada nesta atualização.
+
+Antes de disponibilizar o painel na rede institucional: HTTPS com certificado
+válido, SESSION_COOKIE_SECURE=true,
 LOCAL_AUTH_TEST_MODE=false, revisão das políticas de acesso e definição de
-autenticação específica para os futuros players das TV Boxes. Validar backup
-conjunto e restauração em ambiente isolado autorizado; não há evidência de
-execução desses procedimentos nesta validação. MFA, recuperação administrativa
+autenticação específica para os futuros players das TV Boxes. O backup
+anterior à implantação foi criado pelo operador; a restauração conjunta deve
+ser ensaiada em ambiente isolado autorizado, sem evidência de teste formal
+neste fechamento. MFA, recuperação administrativa
 e auditoria de operações permanecem trabalhos futuros conforme decisões
 existentes. Compatibilidade com TV Boxes ainda exige validação específica.
-Nenhuma etapa seguinte foi iniciada nesta atualização documental.
+Nenhuma etapa posterior à ETAPA 007 foi iniciada nesta atualização documental.
 
 ## Registro da ETAPA 002
 
@@ -1269,3 +1318,400 @@ Nenhuma alteração funcional, de código Python, testes, Dockerfile,
 compose.yaml, `.env`, credenciais ou registros do banco nesta atualização.
 Nenhuma mudança operacional no servidor ou início da próxima etapa.
 Nenhum `git add`, `git commit` ou `git push` executado.
+
+## Registro da ETAPA 007
+
+Histórico da implementação inicial. O bloqueio sudo, a ausência de pytest pelo
+Codex e as pendências descritas naquela sessão foram preservados para
+rastreabilidade. A validação posterior executada pelo operador está em
+[Validação operacional da ETAPA 007](#validação-operacional-da-etapa-007),
+com os resultados automatizados e manuais efetivamente fornecidos.
+
+### Estado inicial e pré-condições
+
+Diretório oficial confirmado por pwd: /home/administrador/digital-signage.
+Branch main, working tree inicialmente limpa, referência local origin/main
+alinhada. git log -5 confirmou HEAD 00081d9 (prompt 007), db9772c (ADR 0007),
+a9e8b64 (autenticação administrativa), 0c9bb18 e 15de5c7.
+git ls-files e git ls-tree HEAD confirmaram ambos os documentos 007 versionados
+antes de qualquer alteração.
+
+Leitura integral de AGENTS.md, README, STATUS, ARCHITECTURE, SECURITY,
+OPERATIONS, DEPLOYMENT, ADRs 0001–0007 e docs/prompts/etapa007.md.
+Inspecionados base/engine e inicialização, Screen/MediaAsset e autenticação,
+serviços de telas/mídia/auth, rotas, CSRF/middleware, templates, CSS, fixtures,
+testes pertinentes e arquivos Docker antes de modificar. Sem divergência
+relevante que impedisse a implementação. Não criada cópia alternativa do projeto.
+
+### Arquivos criados
+
+- app/services/playlists.py;
+- app/routes/admin/playlists.py;
+- app/templates/admin/playlists/list.html;
+- app/templates/admin/playlists/form.html;
+- app/templates/admin/playlists/detail.html;
+- app/templates/admin/playlists/assignment.html;
+- app/templates/admin/playlists/error.html;
+- tests/test_playlists.py.
+
+### Arquivos modificados
+
+- app/database.py;
+- app/models.py;
+- app/main.py;
+- app/routes/admin/screens.py;
+- app/templates/base.html;
+- app/templates/admin/screens/list.html;
+- app/static/admin.css;
+- .dockerignore;
+- compose.yaml;
+- tests/test_auth.py;
+- README.md;
+- docs/STATUS.md;
+- docs/ARCHITECTURE.md;
+- docs/OPERATIONS.md;
+- docs/DEPLOYMENT.md;
+- docs/SECURITY.md.
+
+### Esquema e decisões
+
+Playlist em playlists: id inteiro; name aparado de 1–200, sem exclusividade;
+description opcional até 1000; active padrão true; created_at/updated_at UTC.
+CHECKs de comprimento. PlaylistItem em playlist_items: id próprio, FKs
+obrigatórias/indexadas para playlist e mídia, position inteiro positivo,
+UNIQUE(playlist_id, position), duration_seconds NULL ou inteiro 5–600 e
+created_at UTC. CHECKs usam typeof no SQLite para recusar valores fracionários.
+ScreenPlaylistAssignment em screen_playlist_assignments: screen_id como PK/FK
+única para screens; playlist_id FK indexada, sem unicidade; assigned_at e
+updated_at UTC. Escolhida PK screen_id para expressar um vínculo por tela
+sem identificador redundante; trocar preserva assigned_at e atualiza updated_at.
+As três entidades são importadas antes do create_all já existente.
+Screen, MediaAsset e demais modelos anteriores permanecem inalterados.
+
+A engine anterior não configurava FKs por conexão. O SQLite temporário do
+host retornou PRAGMA foreign_keys=0; isso não mede a engine do container ou
+o banco real. make_engine passa a habilitar e conferir foreign_keys=1 no
+evento connect, para todas as conexões criadas por essa factory. Testes
+definidos cobrem várias conexões simultâneas, reconexão e FKs inválidas;
+execução com SQLAlchemy aguardava o operador naquela ocasião. Posteriormente,
+a suíte completa foi aprovada e o operador confirmou FKs habilitadas na engine
+implantada. Nenhum registro real foi acessado ou alterado pelo Codex na
+implementação inicial, e nenhuma migração destrutiva foi realizada.
+
+### Serviço, regras e atomicidade
+
+app/services/playlists.py concentra leituras e mutações sem HTTP interno ou
+camada abstrata adicional. BEGIN IMMEDIATE antecede leituras/validações e
+serializa escritores, inclusive associação versus remoção do último item
+ou desativação. Sessões das rotas não têm escritas pendentes; objetos já
+carregados são expirados após obter a reserva para evitar decisões com estado
+antigo. Cada operação usa um commit, com rollback em falhas. IntegrityError
+e OperationalError viram conflito 409 compreensível; outros SQLAlchemyError
+viram 503 genérico, sem expor SQL, parâmetros ou segredos.
+
+Nomes iguais são permitidos e a interface identifica por id. Playlists
+podem começar vazias; somente ativas e não vazias podem ser associadas.
+Não desativar playlist associada nem remover seu último item. O limite é de
+100 itens incluindo repetições; mídias podem se repetir na mesma playlist
+ou em várias. Imagem usa duração inteira 5–600 (15 em branco/ausente);
+vídeo usa NULL e recusa qualquer campo de duração enviado. A coerência com
+MediaAsset.kind é validada dentro da transação. Não se copiam nem removem
+arquivos/metadados do catálogo ao manipular itens.
+
+Inserção no final; remoção compacta para 1..N em ordem crescente, com flush
+do DELETE e de cada sucessor. Subir/descer troca com adjacente usando posição
+auxiliar max(position)+1 e três flushes, respeitando UNIQUE em cada passo.
+Limites da lista são operações sem alteração de estado. Mudanças relevantes
+da playlist atualizam updated_at sem alterar created_at; itens preservam
+created_at. Associações não alteram Screen.active; tela desativada mantém vínculo.
+Uma playlist pode atender várias telas; substituir/desvincular afeta somente
+a tela escolhida em uma transação. Sem exclusão de playlist ou mídia.
+
+### Rotas, HTML e segurança
+
+Novas rotas no router /admin, todas protegidas:
+
+| Método | Caminho | Operação |
+|---|---|---|
+| GET | /admin/playlists | Catálogo e contagens |
+| GET | /admin/playlists/new | Formulário de criação |
+| POST | /admin/playlists | Criar |
+| GET | /admin/playlists/{playlist_id} | Detalhe ordenado |
+| GET/POST | /admin/playlists/{playlist_id}/edit | Exibir/salvar nome e descrição |
+| POST | /admin/playlists/{playlist_id}/toggle | Ativar/desativar |
+| POST | /admin/playlists/{playlist_id}/items | Adicionar mídia existente |
+| POST | /admin/playlists/{playlist_id}/items/{item_id}/remove | Remover item |
+| POST | /admin/playlists/{playlist_id}/items/{item_id}/move-up | Subir |
+| POST | /admin/playlists/{playlist_id}/items/{item_id}/move-down | Descer |
+| GET/POST | /admin/screens/{screen_id}/playlist | Exibir/atribuir/substituir vínculo |
+| POST | /admin/screens/{screen_id}/playlist/unassign | Desvincular |
+
+Sucesso usa POST → 303 → GET. Campos inválidos retornam HTML 422, violações
+de negócio 409, ausentes 404; valores preservados em erros normais. IDs são
+validados no serviço, inclusive limites para evitar overflow. Formulários
+tradicionais usam dois seletores separados para adicionar vídeo ou imagem,
+sem JavaScript; somente imagem tem duração editável. Catálogo mostra estado,
+itens e telas; detalhe mostra nome original, tipo, duração/Reprodução integral,
+ordem e vínculos. Telas mostram playlist atual ou Sem playlist e gerenciamento.
+CSS local estendido para select/textarea, descrição e botões desabilitados.
+
+O middleware existente protege todos os novos caminhos antes de ler corpos;
+não foi alterado. require_form_csrf no router exige token em todos os POSTs.
+Cookies, timeouts, revogação, papel admin, login/logout e headers de segurança
+são reutilizados. Formulários escapam dados; erros SQL são genéricos. Não há
+API anônima, player, manifesto, credenciais de dispositivo ou agendamento.
+
+### Testes definidos e verificações da implementação inicial
+
+Definidas 39 novas funções de teste com parametrizações em tests/test_playlists.py.
+Esse número é de definições, **não de casos pytest coletados/executados**.
+A contagem real dependia da coleta pytest; o resultado posterior do operador
+foi 439 passed, conforme a seção seguinte. Cobertura definida inclui
+os 32 grupos do prompt: CRUD permitido/limites/UTC, imagens e vídeos,
+duplicatas/100 itens, ordenação/compactação/constraints, associações e recusas,
+falhas de commit e durante flush com rollback, FKs por conexão, concorrência
+de adição/associação/remoção/desativação, GET sem escrita, anônimo/admin/viewer,
+CSRF em todos os POSTs, sessões inválidas/expiradas/revogadas, escape/valores,
+303/métodos, inicialização repetida, isolamento e preservação da API/Range.
+O vídeo de referência dos novos testes serve apenas às regras de catálogo;
+upload/ffprobe/Range de MP4 real permanecem na suíte anterior.
+
+Os testes anteriores foram preservados; somente a expectativa de tabelas no
+teste final de autenticação foi ampliada para incluir as três entidades, sem
+retirar a comparação de Screen/MediaAsset antes/depois da criação incremental.
+Não há skip/xfail para ocultar falhas.
+
+Efetivamente executado pelo Codex na implementação inicial:
+
+- sintaxe dos 31 arquivos Python via ast.parse: aprovada;
+- compilação dos templates Jinja2: aprovada;
+- 15 renderizações locais dos cinco novos templates com objetos fictícios
+  (preenchido, vazio e erro), StrictUndefined/escape: aprovadas;
+- experimento sqlite3 padrão em memória: swap ingênuo recusado por UNIQUE;
+  posição auxiliar, compactação com ids reordenados, rollback e FK aprovados;
+- docker compose config --quiet: aprovado, sem sudo/acesso ao daemon;
+- comparação Compose normalizado com HEAD usando --env-file /dev/null:
+  somente tag 006 → 007; portas, binding, volumes, serviço e demais parâmetros
+  preservados, sem exibir a configuração operacional;
+- comparação AST dos modelos/função UTC anteriores e comparação de 17
+  arquivos de segurança, serviços, contratos, dependências/Dockerfile e testes:
+  preservados; demais funções de teste de autenticação também preservadas;
+- diff revisado e git diff --check aprovado (sem saída, código 0);
+  whitespace dos oito arquivos novos também aprovado via diff --no-index,
+  sem adicioná-los ao índice. As 14 rotas novas foram conferidas por inspeção
+  (5 GET e 9 POST); isso não constitui teste HTTP.
+
+As renderizações com Jinja2 já disponível e o controle SQL com biblioteca
+padrão não instalam dependências nem importam/iniciam a aplicação. Não
+executam FastAPI/TestClient ou os serviços/DDL gerados pelo SQLAlchemy.
+São verificações locais limitadas, não substitutos da suíte em container.
+
+Resultado pytest do Codex na implementação inicial: **0 casos coletados ou
+executados; nenhuma aprovação runtime declarada naquela sessão**. Falhas,
+warnings e duração da suíte não foram avaliados pelo Codex. SQLAlchemy e
+pytest não estavam instalados no host; nada foi instalado para contornar.
+Os 267 passed, 1 warning em 172.98 segundos eram históricos da ETAPA 006.
+Posteriormente, o operador executou a suíte da ETAPA 007: 439 passed, 1 warning
+em 515.73 segundos, sem falhas. Isso resolve a pendência de execução da suíte,
+sem atribuir sua execução ao Codex.
+
+### Bloqueio operacional e pendências da implementação inicial
+
+sudo -n docker compose ps foi bloqueado por no new privileges no sandbox.
+A consulta autorizada fora do sandbox manteve sudo normal e exigiu autenticação
+interativa. Não houve contorno de sudo, mudança de privilégios ou novo método
+de acesso ao Docker. Build, pytest em container, logs, inspeção real de
+binding/volumes, up/restart/recriação e navegador não foram executados pelo
+Codex naquela sessão. A validação posterior pelo operador está registrada
+abaixo; o bloqueio inicial não foi contornado.
+
+Imagem definida digital-signage:etapa007; não construída pelo Codex naquela
+implementação, mas posteriormente construída e validada pelo operador.
+Compose altera somente a tag e .dockerignore inclui o diretório de templates.
+Dockerfile, dependências, UID/GID 10001, serviço único, healthcheck, portas,
+binding e signage-data/signage-media preservados. .env não alterado, sem
+bootstrap/login no banco real ou alteração de dados persistentes pelo Codex.
+
+Pendências ao final da implementação inicial (histórico): auditoria do diff
+pelo operador, backup apropriado, build,
+coleta e execução integral de pytest, imports/ORM/constraints/concorrência em
+container, logs/healthy, PRAGMA efetivo da engine implantada e os 20 itens
+de OPERATIONS, incluindo persistência e regressão operacional. A etapa não
+tinha aprovação operacional naquela ocasião. O operador posteriormente
+confirmou build, 439 testes aprovados, FKs na engine implantada, backup
+anterior à implantação, 20/20 itens manuais e persistência após restart e
+recriação. Os resultados fornecidos estão na seção seguinte; logs detalhados
+não foram fornecidos neste fechamento. O teste formal de restauração conjunta
+continua pendente. Persistência e existência de backup não comprovam restauração.
+
+Sem liberação institucional ampla: HTTPS válido, Secure=true,
+LOCAL_AUTH_TEST_MODE=false, políticas de acesso e acesso específico futuro
+dos players continuam necessários. MFA, recuperação administrativa e auditoria
+permanecem trabalhos futuros conforme decisões existentes.
+
+### Escopo e próximo passo indicado na implementação inicial
+
+Naquela ocasião, recomendou-se revisar o diff, executar build/suíte e validar
+operacionalmente com backup/transporte apropriados. Essas evidências foram
+posteriormente fornecidas pelo operador. O próximo passo atual está no início
+deste documento; nenhuma ETAPA 008 foi iniciada neste fechamento documental.
+
+Nenhum git add, git commit, git push, deploy, bootstrap, alteração de .env,
+binding, volumes persistentes, credenciais ou registros reais. Nenhuma mudança
+em SSH, firewall, sudoers, Docker global, rede ou serviços de outros projetos.
+
+## Validação operacional da ETAPA 007
+
+ETAPA 007 — Playlists e Associação às Telas — implementada e validada
+operacionalmente com sucesso pelo operador no ambiente local com túnel SSH.
+Fonte: resultados reais fornecidos pelo operador nesta solicitação de
+fechamento, registrados documentalmente em **2026-10-15**. A data é a do
+registro, sem atribuir data de execução não informada.
+
+Todos os comandos Docker, testes automatizados, verificações de SQLite,
+backup e validações pelo navegador desta seção foram executados ou confirmados
+e fornecidos pelo operador. **O Codex não os executou nem reexecutou nesta
+atualização documental**, nem acessou credenciais, sessões, banco real ou
+conteúdos do backup. A auditoria desta atualização limita-se à documentação
+e ao Git.
+
+### Build e testes automatizados
+
+- `sudo docker compose config --quiet`: aprovado;
+- `sudo docker compose build`: aprovado;
+- imagem construída: `digital-signage:etapa007`;
+- comando de testes executado pelo operador:
+
+```bash
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+```
+
+Resultado efetivo: **439 passed, 1 warning**, duração **515.73 segundos
+(8min35s)**, **nenhuma falha**. Warning conhecido de depreciação Starlette/AnyIO.
+Os testes anteriores de autenticação, API, telas e biblioteca multimídia
+continuam aprovados. A contagem vem da execução real informada pelo operador,
+não das 39 definições de funções contadas na implementação inicial. Os 20
+itens manuais abaixo são evidências separadas dos 439 testes pytest.
+
+### Docker e persistência
+
+- serviço único `signage-app` preservado;
+- container `digital-signage-app` executando a imagem etapa007;
+- binding de teste preservado em `127.0.0.1:8080`;
+- acesso administrativo por túnel SSH;
+- volumes SQLite e mídia preservados;
+- restart executado com retorno ao estado `healthy`;
+- force-recreate executado;
+- playlists, itens e associações persistiram após restart e recriação,
+  conforme confirmação do operador.
+
+Não se acrescenta resultado de análise de logs não fornecido neste fechamento.
+Nenhuma operação Docker foi reexecutada pelo Codex nesta atualização.
+
+### SQLite e integridade referencial
+
+Na engine implantada, o operador confirmou:
+
+```text
+Foreign keys habilitadas: True
+```
+
+Tabelas identificadas pelo operador:
+
+- `playlists`;
+- `playlist_items`;
+- `screen_playlist_assignments`.
+
+Essa é a evidência operacional da engine implantada, distinta do controle
+sqlite3 em memória realizado pelo Codex na implementação inicial. A integridade
+referencial não permanece pendente nos resultados confirmados desta etapa.
+
+### Backup anterior à implantação
+
+Criado pelo operador em:
+
+`/home/administrador/signage-backups/before-007-20261015-145745`
+
+Foram copiados:
+
+- banco SQLite consistente por meio da API de backup;
+- arquivos de mídia;
+- configuração `.env`, armazenada fora do repositório.
+
+O resultado resolve a pendência de criação do backup anterior à implantação.
+**O backup não foi submetido a teste formal de restauração conjunta do SQLite
+e das mídias.** A restauração permanece pendente. Não se atribui a esse backup
+um comando de tar ou outro procedimento não informado pelo operador, nem se
+afirma recuperação validada a partir da persistência após restart/recriação.
+Nenhum conteúdo do backup foi acessado pelo Codex.
+
+### Validação manual pelo navegador
+
+O operador confirmou **20/20 aprovados** nos itens efetivamente informados:
+
+1. Painel de playlists abre após login.
+2. Usuário anônimo é redirecionado ao login.
+3. Criação de playlist com nome e descrição.
+4. Edição de nome e descrição.
+5. Inclusão de imagem da biblioteca.
+6. Configuração da duração da imagem.
+7. Inclusão de vídeo MP4.
+8. Vídeos configurados para reprodução integral.
+9. Inclusão de mídias repetidas.
+10. Alteração da ordem com Subir e Descer.
+11. Remoção de item com reorganização da sequência.
+12. Associação de playlist válida à TV Piloto.
+13. Associação da mesma playlist à TV do Pátio.
+14. Substituição de playlist associada.
+15. Desassociação sem desativar a TV.
+16. Bloqueio de associação de playlist vazia ou inativa.
+17. Bloqueio de desativação de playlist associada.
+18. Bloqueio de remoção do último item de playlist associada.
+19. Proteção das operações administrativas por autenticação e CSRF.
+20. Persistência de playlists, itens e associações após restart e recriação.
+
+O item 8 confirma a configuração de vídeo integral, não reprodução em TV.
+A ETAPA 007 implementa somente configuração e associação; não há declaração
+de TVs reproduzindo playlists ou validação de player/TV Box nesta etapa.
+
+### Limitações e pendências remanescentes
+
+- implementação do player web;
+- integração e validação real com BTV13 e H6+;
+- autenticação específica e limitada para os dispositivos;
+- HTTPS institucional antes da disponibilização do painel na rede, preservando
+  os demais requisitos de cookies, modo local e políticas de acesso documentados;
+- teste formal de restauração conjunta do SQLite e das mídias;
+- auditoria, recuperação administrativa, MFA e demais controles futuros já
+  documentados.
+
+O ambiente validado permanece o de testes por túnel SSH. O fechamento não
+libera o painel para acesso institucional amplo nem inicia a ETAPA 008.
+O warning conhecido Starlette/AnyIO permanece registrado, sem falhas e sem
+correção de código/dependências nesta atualização.
+
+### Registro desta atualização documental
+
+- Arquivos criados: nenhum.
+- Arquivos alterados nesta atualização: docs/STATUS.md, docs/OPERATIONS.md,
+  docs/ARCHITECTURE.md, README.md, docs/DEPLOYMENT.md e docs/SECURITY.md.
+- Decisões: registrar o fechamento operacional pelo operador; separar testes
+  automatizados, verificações de infraestrutura/SQLite/backup e itens manuais;
+  remover pendências resolvidas, preservando bloqueio sudo e controles da
+  implementação inicial como histórico; manter restauração formal pendente.
+- Verificações documentais pelo Codex: diff revisado e git diff --check
+  aprovado, sem saída e com código 0. Comparação com o início da atualização:
+  78 arquivos fora dos seis documentos intactos; HEAD e diff do índice
+  inalterados. Nenhum teste automatizado ou operacional reexecutado.
+- Problema informado: 1 warning conhecido de depreciação Starlette/AnyIO;
+  nenhuma falha na suíte.
+- Pendências: as listadas acima; build, pytest, integridade referencial e os
+  20 itens manuais da ETAPA 007 estão aprovados nos resultados do operador.
+- Próximo passo recomendado: auditoria do fechamento documental e planejamento
+  do ensaio formal de restauração e dos requisitos futuros, sem iniciar a
+  ETAPA 008 nesta atualização.
+
+Alterações de implementação preexistentes no working tree preservadas.
+Nenhuma alteração funcional, de Python, testes, banco, Dockerfile, compose.yaml,
+.env, credenciais/sessões ou configurações globais nesta atualização.
+Nenhum git add, git commit ou git push executado.

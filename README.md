@@ -73,7 +73,8 @@ conforme resultados fornecidos pelo operador: config e build aprovados,
 149 testes aprovados, 1 warning de depreciação Starlette/AnyIO, container
 healthy e os 14 itens do checklist pelo navegador aprovados. HTTP Range
 206/416 e persistência após restart e force-recreate foram confirmados.
-Não há player nem playlists; a compatibilidade com TV Boxes continua pendente.
+Na ETAPA 005 ainda não havia playlists; a implementação da ETAPA 007 está
+descrita abaixo. Não há player; a compatibilidade com TV Boxes continua pendente.
 
 Perfil MP4: uma trilha H.264 de 8 bits `yuv420p`, até 1920 × 1080 e 30 FPS,
 com uma trilha AAC opcional. Não há transcodificação. Limites padrão:
@@ -108,6 +109,35 @@ validado. Essa validação não libera uso institucional amplo: ainda exige
 HTTPS com certificado válido, `SESSION_COOKIE_SECURE=true`,
 `LOCAL_AUTH_TEST_MODE=false`, revisão das políticas de acesso e definição de
 autenticação específica para os futuros players das TV Boxes.
+
+A ETAPA 007 implementa no repositório playlists multimídia em
+`/admin/playlists` e associação em `/admin/screens/{screen_id}/playlist`,
+com navegação Telas/Mídias/Playlists. Cada playlist aceita até 100 referências
+ordenadas a mídias existentes, inclusive repetições, sem copiar arquivos.
+Imagens usam 5–600 segundos (15 por padrão); vídeos usam reprodução integral,
+sem duração editável. Uma tela tem no máximo uma playlist, que pode ser
+compartilhada por várias telas. Somente playlists ativas e não vazias podem
+ser associadas; vínculos impedem desativação e remoção do último item.
+As operações reutilizam autenticação, papel admin, sessões e CSRF da ETAPA 006.
+
+A ETAPA 007 está implementada e validada operacionalmente pelo operador:
+config/build aprovados, imagem `digital-signage:etapa007` e suíte com
+**439 passed, 1 warning em 515.73 segundos (8min35s)**, sem falhas. O warning
+conhecido é de depreciação Starlette/AnyIO; os testes anteriores de autenticação,
+API, telas e biblioteca multimídia continuam aprovados. Separadamente, o
+operador aprovou os **20/20 itens manuais**, confirmou FKs na engine implantada
+e persistência de playlists, itens e associações após restart e force-recreate.
+Binding `127.0.0.1:8080`, túnel SSH e volumes preservados.
+
+O backup anterior à implantação inclui SQLite consistente por API de backup,
+mídias e `.env` fora do repositório; o teste formal de restauração conjunta
+permanece pendente. Resultados fornecidos pelo operador, sem execução ou
+reexecução pelo Codex nesta atualização documental; evidências e histórico do
+bloqueio sudo em [STATUS](docs/STATUS.md#validação-operacional-da-etapa-007).
+A etapa entrega somente configuração e associação, sem reprodução nas TVs.
+Player web, integração/validação real com BTV13 e H6+, autenticação limitada
+dos dispositivos e agendamento não foram implementados. HTTPS institucional
+permanece necessário antes da disponibilização do painel na rede.
 
 Cookies usam Secure, HttpOnly, SameSite=Lax e Path=/ por padrão, sem Domain.
 Sessões têm duração absoluta de 8h e inatividade de 30min no servidor;

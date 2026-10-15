@@ -43,7 +43,11 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 .form-panel { max-width: 720px; }
 .field { margin-bottom: 24px; }
 label { display: block; font-weight: 600; margin-bottom: 6px; }
-input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #8799ab; border-radius: 6px; background: white; color: inherit; font: inherit; }
+input, select, textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #8799ab; border-radius: 6px; background: white; color: inherit; font: inherit; }
+textarea { resize: vertical; }
+.button:disabled { opacity: 0.5; cursor: default; }
+.playlist-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.playlist-add { margin-block: 16px; }
 input[aria-invalid="true"] { border-color: #a52a2a; }
 .field-help, .field-error { font-size: 0.9rem; margin: 6px 0 0; }
 .field-help { color: #526176; }

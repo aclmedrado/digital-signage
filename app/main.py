@@ -13,6 +13,7 @@ from app.config import get_auth_settings
 from app.database import Base, engine
 from app.models import utc_now
 from app.routes.admin.auth import router as auth_router
+from app.routes.admin.playlists import router as admin_playlists_router
 from app.routes.admin.screens import router as admin_router
 from app.routes.admin.media import render_form as render_media_form, router as admin_media_router
 from app.routes.media import router as media_router
@@ -37,6 +38,7 @@ app.include_router(auth_router)
 app.include_router(router)
 app.include_router(admin_router)
 app.include_router(admin_media_router)
+app.include_router(admin_playlists_router)
 app.include_router(media_router)
 app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent / "static"), name="static")
 

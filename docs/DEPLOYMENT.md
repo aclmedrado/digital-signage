@@ -155,9 +155,10 @@ configuração é temporária e exclusiva de testes locais por túnel SSH.
 Não há liberação para uso institucional amplo. Antes dessa disponibilização,
 permanecem HTTPS com certificado válido, SESSION_COOKIE_SECURE=true,
 LOCAL_AUTH_TEST_MODE=false, revisão das políticas de acesso e definição de
-autenticação específica para os futuros players. Backup/restauração conjunta
-continuam sem evidência de execução; MFA, recuperação administrativa e
-auditoria de operações permanecem trabalhos futuros.
+autenticação específica para os futuros players. Na validação da ETAPA 006,
+backup/restauração conjunta ainda não tinham confirmação; o backup anterior
+à ETAPA 007 foi posteriormente criado, conforme abaixo. Restauração formal,
+MFA, recuperação administrativa e auditoria de operações permanecem futuros.
 
 Os procedimentos abaixo são mantidos para futuras implantações e revalidações.
 Não enviar credenciais/cookies por http://10.4.254.202:8080. O operador deve
@@ -226,3 +227,74 @@ cookies, CSRF, logout, regras de expiração, Range autorizado, usuário/dados
 após restart/recriação e preservação de TV Piloto, TV do Pátio e mídias
 anteriores. Registre novos resultados, quantidade de testes, falhas e warnings
 em docs/STATUS.md. Não instalar dependências no host nem contornar sudo.
+
+## Implantação de playlists — ETAPA 007
+
+ETAPA 007 implementada e validada operacionalmente pelo operador. Config e
+build aprovados; imagem construída `digital-signage:etapa007`. O operador
+executou `sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider`:
+**439 passed, 1 warning em 515.73 segundos (8min35s)**, sem falhas. Warning
+conhecido de depreciação Starlette/AnyIO; autenticação, API, telas e biblioteca
+multimídia anteriores continuam aprovadas. Separadamente, 20/20 itens manuais
+aprovados. O bloqueio sudo do Codex na implementação inicial permanece como
+histórico em STATUS; nenhum desses testes ou procedimentos foi reexecutado
+pelo Codex nesta atualização documental.
+
+O container digital-signage-app executa a imagem etapa007, com serviço único
+signage-app, binding de teste 127.0.0.1:8080, acesso por túnel SSH e volumes
+preservados. Restart retornou healthy e force-recreate foi executado, com
+persistência de playlists, itens e associações após ambos os ciclos. O operador
+confirmou `Foreign keys habilitadas: True` na engine implantada e as tabelas
+playlists, playlist_items e screen_playlist_assignments.
+
+Backup anterior à implantação criado pelo operador em
+`/home/administrador/signage-backups/before-007-20261015-145745`, com SQLite
+consistente por API de backup, arquivos de mídia e configuração .env fora do
+repositório. O Codex não acessou o backup ou seus conteúdos. O teste formal de
+restauração conjunta continua pendente.
+
+Sem novas dependências ou volumes. Dockerfile, UID/GID 10001, serviço
+signage-app, healthcheck, portas e configuração de binding foram preservados;
+.dockerignore inclui os novos templates. O esquema adiciona apenas playlists,
+playlist_items e screen_playlist_assignments via create_all. PRAGMA
+foreign_keys=ON passa a ser habilitado/verificado em cada conexão SQLite;
+isso não altera registros ou recria tabelas existentes.
+
+Para futuras implantações ou revalidações, depois de revisar o diff e
+providenciar backup consistente apropriado de signage-data e signage-media,
+inspecione o ambiente Docker e execute no terminal do operador, no diretório
+oficial, preservando .env e nome do projeto:
+
+```bash
+cd /home/administrador/digital-signage
+sudo docker compose config --quiet
+sudo docker compose build
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+# Executar up somente se build e pytest forem aprovados e houver backup:
+sudo docker compose up -d
+sudo docker compose ps
+sudo docker compose logs --tail=100 signage-app
+```
+
+Não executar up se build ou pytest falharem. Não executar down -v, remover
+volumes, alterar binding ou repetir bootstrap administrativo. Confirmar
+healthy, logs e binding efetivo 127.0.0.1:8080 nas futuras revalidações; o
+binding foi confirmado pelo operador, sem reinspeção do Codex aqui. Usar o túnel
+SSH já documentado, sem enviar credenciais/cookies em HTTP na LAN.
+
+Para futuras revalidações, conferir FKs com o comando de OPERATIONS e repetir
+os 20 itens já aprovados do
+[checklist](OPERATIONS.md#checklist-manual-confirmado-pelo-operador--etapa-007),
+incluindo CSRF/autorização, ordenação, uma playlist por tela,
+compartilhamento, recusas de negócio, regressão e persistência após restart e
+recriação sem apagar volumes. Registrar saída real do pytest, duração,
+falhas/warnings e novas evidências operacionais em STATUS. O resultado real da
+ETAPA 007 é 439 passed; os 267 da ETAPA 006 permanecem históricos.
+
+Nenhuma reprodução em TV Box pode ser alegada: player, credenciais de
+dispositivos e agendamento não foram implementados. Sem liberação
+institucional ampla; permanecem HTTPS válido, Secure=true,
+LOCAL_AUTH_TEST_MODE=false, revisão de políticas e autenticação futura
+específica e limitada dos dispositivos. Player web, integração/validação real
+com BTV13 e H6+, restauração conjunta formal, auditoria e recuperação
+administrativa permanecem futuros. Nenhuma ETAPA 008 iniciada aqui.

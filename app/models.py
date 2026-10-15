@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, String
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -97,3 +97,47 @@ class LoginLimit(Base):
     key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     attempts: Mapped[int]
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class Playlist(Base):
+    __tablename__ = "playlists"
+    __table_args__ = (
+        CheckConstraint("length(trim(name)) BETWEEN 1 AND 200", name="playlist_name"),
+        CheckConstraint("description IS NULL OR length(description) <= 1000", name="playlist_description"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(String(1000))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class PlaylistItem(Base):
+    __tablename__ = "playlist_items"
+    __table_args__ = (
+        UniqueConstraint("playlist_id", "position", name="playlist_item_position"),
+        CheckConstraint("typeof(position) = 'integer' AND position > 0", name="playlist_item_positive_position"),
+        CheckConstraint(
+            "duration_seconds IS NULL OR "
+            "(typeof(duration_seconds) = 'integer' AND duration_seconds BETWEEN 5 AND 600)",
+            name="playlist_item_duration",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    playlist_id: Mapped[int] = mapped_column(ForeignKey("playlists.id"), index=True)
+    media_id: Mapped[int] = mapped_column(ForeignKey("media_assets.id"), index=True)
+    position: Mapped[int]
+    duration_seconds: Mapped[int | None]
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+
+
+class ScreenPlaylistAssignment(Base):
+    __tablename__ = "screen_playlist_assignments"
+
+    screen_id: Mapped[int] = mapped_column(ForeignKey("screens.id"), primary_key=True)
+    playlist_id: Mapped[int] = mapped_column(ForeignKey("playlists.id"), index=True)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)

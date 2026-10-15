@@ -138,7 +138,8 @@ nesta atualização documental; registro completo em docs/STATUS.md.
 Use /admin/media para catálogo e /admin/media/new para upload com
 título. MP4/H.264 yuv420p, até Full HD/30 FPS, AAC opcional; JPEG, PNG,
 WebP e GIF. SVG é rejeitado até tratamento seguro. Sem transcodificação,
-exclusão, playlists, associação às telas ou player TV Box.
+exclusão ou player TV Box. Playlists/associações foram implementadas na
+ETAPA 007 e validadas operacionalmente pelo operador, conforme abaixo.
 
 Limites padrão ajustáveis em .env.example: 250 MiB/vídeo, 10 MiB/imagem,
 20 milhões de pixels/quadro, 100 quadros/imagem e 100 milhões de pixels
@@ -248,13 +249,26 @@ de etapa específica. Nunca usar down -v nem limpeza global Docker.
 Antes da implantação da ETAPA 005, o operador criou o backup local do SQLite
 anterior à etapa em /home/administrador/signage-backups/signage-before-005.db.
 O backup pré-implantação informado foi realizado; ele não equivale a backup
-conjunto de SQLite e mídias da ETAPA 005 nem confirma restauração. O backup
-dos dois volumes e o ensaio de restauração continuam sem confirmação de execução.
+conjunto de SQLite e mídias da ETAPA 005 nem confirma restauração.
+
+Antes da implantação da ETAPA 007, o operador criou:
+
+`/home/administrador/signage-backups/before-007-20261015-145745`
+
+Foram copiados o banco SQLite consistente por meio da API de backup, os
+arquivos de mídia e a configuração .env, armazenada fora do repositório.
+Essa evidência resolve a pendência de criação do backup anterior à implantação.
+**O backup não foi submetido a teste formal de restauração conjunta**; essa
+pendência permanece. O Codex não acessou esse diretório ou seus conteúdos,
+credenciais, sessões ou banco real nesta atualização documental. O procedimento
+genérico abaixo permanece para backups futuros; não é atribuído ao operador
+como o comando usado para produzir esse backup.
 
 Procedimento para futuros backups consistentes, não executado nesta atualização.
 No diretório oficial, inspecione o espaço disponível e reserve uma janela
 sem uploads. A imagem
-etapa006 deve estar construída antes de usar compose run abaixo; build não
+da etapa alvo (etapa007 nesta atualização) deve estar construída antes de
+usar compose run abaixo; build não
 recria o serviço em produção. Pare apenas
 signage-app, confira compose ps e gere um arquivo fora dos volumes, mantendo
 o mesmo nome de projeto e .env. O comando Python abaixo não importa a
@@ -312,7 +326,9 @@ institucional amplo. Antes dessa disponibilização: HTTPS com certificado
 válido, SESSION_COOKIE_SECURE=true, LOCAL_AUTH_TEST_MODE=false, revisão das
 políticas de acesso e definição de autenticação específica dos futuros players
 das TV Boxes. MFA, recuperação administrativa e auditoria de operações são
-trabalhos futuros; backup/restauração conjunta continuam sem confirmação.
+trabalhos futuros. Na validação da ETAPA 006 ainda não havia confirmação de
+backup/restauração conjunta; o backup anterior à ETAPA 007 foi posteriormente
+confirmado, conforme seção acima. Restauração formal permanece pendente.
 
 ### Procedimentos para futuras implantações e revalidações
 
@@ -403,3 +419,116 @@ Persistência após restart/recriação não comprova restauração. Backups de
 SQLite contêm hashes de senha e CSRF; restringir acesso, proteger cópias e
 ensaiar restauração conjunta em ambiente isolado autorizado. O procedimento
 acima permanece disponível para execução futura; não foi executado pelo Codex.
+
+## Playlists e associação às telas — ETAPA 007
+
+Etapa implementada e validada operacionalmente pelo operador no ambiente de
+testes com binding 127.0.0.1:8080 e acesso administrativo por túnel SSH.
+Resultados fornecidos pelo operador neste fechamento, sem execução ou
+reexecução de comandos Docker, pytest, consultas SQLite ou testes pelo navegador
+pelo Codex nesta atualização documental. O bloqueio sudo da implementação
+inicial permanece no histórico de [STATUS](STATUS.md#registro-da-etapa-007).
+
+Resultados automatizados e de infraestrutura confirmados pelo operador:
+
+- `sudo docker compose config --quiet`: aprovado;
+- `sudo docker compose build`: aprovado; imagem `digital-signage:etapa007`;
+- `sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider`:
+  **439 passed, 1 warning em 515.73 segundos (8min35s)**, nenhuma falha;
+  warning conhecido de depreciação Starlette/AnyIO;
+- testes anteriores de autenticação, API, telas e biblioteca multimídia
+  continuam aprovados;
+- serviço único signage-app e container digital-signage-app executando etapa007;
+- binding de teste, túnel SSH e volumes SQLite/mídia preservados;
+- restart com retorno ao estado healthy e force-recreate executados;
+  playlists, itens e associações persistiram após ambos os ciclos.
+
+URLs administrativas, usando o mesmo acesso local por túnel SSH:
+
+- `/admin/playlists`: catálogo com id/nome, estado, quantidade de itens e telas;
+- `/admin/playlists/new`: criação ativa, podendo começar vazia;
+- `/admin/playlists/{id}`: detalhe, itens ordenados, adicionar/remover/subir/descer
+  e telas vinculadas;
+- `/admin/playlists/{id}/edit`: nome e descrição;
+- `/admin/screens/{screen_id}/playlist`: associar, substituir ou desvincular;
+  a lista de telas mostra a playlist atual ou Sem playlist e um link de gestão.
+
+Navegação Telas/Mídias/Playlists. Todas as páginas exigem administrador ativo.
+Todos os POSTs usam o CSRF da sessão; GET não altera playlists ou vínculos.
+Sucesso redireciona com 303; campos inválidos retornam HTML 422, violações
+de negócio 409, ausentes 404 e falha de banco genérica 503 quando não for
+classificada como conflito. Formulários preservam valores em erros esperados.
+
+Itens referenciam o acervo existente, sem copiar arquivos. Até 100 por playlist,
+incluindo repetições. Use o formulário de imagem para duração inteira 5–600
+segundos; vazio usa 15, inclusive em GIF/WebP animados. O formulário de vídeo
+não envia duração; o backend recusa qualquer duração enviada para vídeo,
+que fica com Reprodução integral. Remover um item preserva MediaAsset e arquivo.
+Subir/descer muda uma posição; os botões dos limites ficam desabilitados.
+
+Só playlists ativas com itens podem ser associadas. Cada tela tem no máximo
+uma playlist; várias telas podem compartilhar a mesma. Substituir/desvincular
+afeta apenas o vínculo escolhido e não altera Screen.active. Desativar uma
+tela não remove sua associação. Desvincule todas as telas antes de desativar
+uma playlist; uma playlist associada não pode perder seu último item.
+Playlists inativas continuam editáveis, inclusive seus itens e ordenação.
+
+### Procedimentos para futuras implantações e revalidações
+
+Build, suíte e validação operacional da ETAPA 007 estão aprovados pelo operador;
+o backup anterior à implantação está registrado acima. Para futuras implantações
+ou revalidações, após revisão do diff e backup apropriado dos dois volumes,
+seguir a sequência de [DEPLOYMENT](DEPLOYMENT.md#implantação-de-playlists--etapa-007).
+Não executar up se build ou pytest falharem. Não repetir bootstrap, não alterar
+o .env/binding e não remover volumes. Preservar o acesso atual por túnel SSH;
+nenhuma liberação institucional é autorizada por esta etapa.
+
+O schema é criado incrementalmente no startup. O operador confirmou na engine
+implantada `Foreign keys habilitadas: True` e identificou as tabelas playlists,
+playlist_items e screen_playlist_assignments. PRAGMA foreign_keys=ON é
+habilitado/verificado por conexão make_engine. Para futuras conferências,
+sem alterar registros, permanece a consulta de referência:
+
+```bash
+sudo docker compose exec signage-app python -c 'from app.database import engine; c = engine.connect(); print(c.exec_driver_sql("PRAGMA foreign_keys").scalar_one()); c.close()'
+```
+
+Resultado esperado dessa consulta: `1`. O resultado real fornecido pelo operador
+é a confirmação True acima, sem atribuir a ele um comando não informado.
+O Codex não executou essa consulta nesta atualização documental.
+
+### Checklist manual confirmado pelo operador — ETAPA 007
+
+**20/20 aprovados**, conforme os itens efetivamente informados pelo operador
+neste fechamento; são evidências manuais separadas dos 439 testes pytest:
+
+1. Painel de playlists abre após login.
+2. Usuário anônimo é redirecionado ao login.
+3. Criação de playlist com nome e descrição.
+4. Edição de nome e descrição.
+5. Inclusão de imagem da biblioteca.
+6. Configuração da duração da imagem.
+7. Inclusão de vídeo MP4.
+8. Vídeos configurados para reprodução integral.
+9. Inclusão de mídias repetidas.
+10. Alteração da ordem com Subir e Descer.
+11. Remoção de item com reorganização da sequência.
+12. Associação de playlist válida à TV Piloto.
+13. Associação da mesma playlist à TV do Pátio.
+14. Substituição de playlist associada.
+15. Desassociação sem desativar a TV.
+16. Bloqueio de associação de playlist vazia ou inativa.
+17. Bloqueio de desativação de playlist associada.
+18. Bloqueio de remoção do último item de playlist associada.
+19. Proteção das operações administrativas por autenticação e CSRF.
+20. Persistência de playlists, itens e associações após restart e recriação.
+
+Evidências consolidadas em [STATUS](STATUS.md#validação-operacional-da-etapa-007).
+Os itens podem ser repetidos em futuras revalidações. O backup anterior à
+implantação foi criado pelo operador, mas o teste formal de restauração conjunta
+do SQLite e mídias permanece pendente. A ETAPA 007 entrega apenas configuração
+e associação; não há TVs reproduzindo playlists por um player do sistema.
+Player web, integração/validação real com BTV13 e H6+, autenticação específica
+e limitada dos dispositivos, auditoria e recuperação administrativa continuam
+futuros. HTTPS institucional é necessário antes de disponibilizar o painel na
+rede. Nenhuma ETAPA 008 iniciada nesta atualização exclusivamente documental.

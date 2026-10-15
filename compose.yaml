@@ -2,7 +2,7 @@ name: digital-signage
 
 services:
   signage-app:
-    image: digital-signage:etapa006
+    image: digital-signage:etapa007
     build: .
     container_name: digital-signage-app
     restart: unless-stopped

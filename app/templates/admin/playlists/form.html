@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar playlist' if playlist_id is not none else 'Nova playlist' }}{% endblock %}
+{% block content %}
+  <div class="page-heading"><h1>{{ 'Editar playlist' if playlist_id is not none else 'Nova playlist' }}</h1></div>
+  <div class="form-panel">
+    {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" action="{{ url_for('admin_update_playlist', playlist_id=playlist_id) if playlist_id is not none else url_for('admin_create_playlist') }}">
+      <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+      <div class="field">
+        <label for="name">Nome</label>
+        <input id="name" name="name" value="{{ values.name }}" required maxlength="200">
+      </div>
+      <div class="field">
+        <label for="description">Descrição (opcional)</label>
+        <textarea id="description" name="description" rows="5" maxlength="1000">{{ values.description }}</textarea>
+      </div>
+      {% if playlist_id is none %}<p>A playlist será criada ativa. Adicione itens antes de associá-la a uma tela.</p>{% endif %}
+      <div class="form-actions">
+        <button class="button" type="submit">{{ 'Salvar alterações' if playlist_id is not none else 'Criar playlist' }}</button>
+        <a class="button secondary" href="{{ url_for('admin_playlist_detail', playlist_id=playlist_id) if playlist_id is not none else url_for('admin_playlists') }}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

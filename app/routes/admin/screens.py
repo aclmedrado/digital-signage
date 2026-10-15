@@ -10,6 +10,7 @@ from app.database import get_session
 from app.schemas import ScreenCreate, ScreenUpdate
 from app.security import require_form_csrf
 from app.services import screens
+from app.services.playlists import screen_playlists
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_form_csrf)])
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
@@ -93,6 +94,7 @@ def list_screens(request: Request, session: Session = Depends(get_session)):
         name="admin/screens/list.html",
         context={
             "screens": screens.list_screens(session),
+            "playlists": screen_playlists(session),
             "notice": notices.get(request.query_params.get("result")),
         },
     )
