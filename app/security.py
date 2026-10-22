@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.services import auth
 
 HTML_CSP = "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; media-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+PLAYER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 
 def transport_allowed(request, settings):
@@ -49,8 +50,9 @@ class AuthMiddleware:
         path = scope["path"]
         protected = path == "/admin" or path.startswith(("/admin/", "/api/screens", "/media/"))
         login_page = path == "/admin/login"
+        player_area = path == "/device/activate" or path.startswith("/player/")
         protected = protected and not login_page
-        if not protected and not login_page:
+        if not protected and not login_page and not player_area:
             return await self.app(scope, receive, send)
         application = scope["app"]
         settings = application.state.auth_settings
@@ -79,7 +81,8 @@ class AuthMiddleware:
         async def safe_send(message):
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
-                headers["Cache-Control"] = "no-store"
+                headers["Cache-Control"] = "private, no-store" if player_area else "no-store"
+                headers["Referrer-Policy"] = "no-referrer"
                 headers.setdefault("X-Content-Type-Options", "nosniff")
                 if headers.get("content-type", "").startswith("text/html"):
                     headers.setdefault("Content-Security-Policy", HTML_CSP)

@@ -586,4 +586,5 @@ def test_existing_schema_and_records_survive_auth_tables(isolated_database):
     assert after == before
     assert set(inspect(isolated_database).get_table_names()) == {
         "screens", "media_assets", "users", "auth_sessions", "login_challenges", "login_limits",
-        "playlists", "playlist_items", "screen_playlist_assignments"}
+        "playlists", "playlist_items", "screen_playlist_assignments",
+        "screen_pairing_codes", "screen_device_sessions", "device_activation_challenges", "device_activation_limits"}

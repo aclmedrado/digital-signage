@@ -1,5 +1,84 @@
 # Implantação
 
+## ETAPA 008 — implantação confirmada pelo operador
+
+Imagem `digital-signage:etapa008` construída e implantação confirmada pelo
+operador: container `digital-signage-app` healthy após recriação, GET `/health`
+HTTP 200, inicialização sem erros nos logs, binding exclusivo `127.0.0.1:8080`
+e acesso pelo navegador via túnel SSH. `PRAGMA foreign_keys` retornando 1,
+quatro tabelas de pareamento/dispositivos e persistência após restart e
+force-recreate também confirmados pelo operador.
+
+Suíte completa em container executada pelo operador: **555 passed, 1 warning
+de depreciação Starlette/AnyIO em 821.67 segundos, zero falhas**. O caso
+corrigido de cookie contendo hash e as cinco parametrizações passaram
+separadamente. Homologação funcional real confirmada, com os limites e
+pendências manuais da [matriz de OPERATIONS](OPERATIONS.md#evidências-por-item-do-checklist-008).
+Não se declara 24/24 manuais. Os 13 testes JS anteriores do Codex usam
+DOM/relógio simulados e não substituem a homologação de navegador.
+
+Backup anterior à implantação:
+`/home/administrador/signage-backups/before-008-20261016-171852`, com SQLite
+consistente, mídias e `.env` fora do repositório. Restauração conjunta formal
+permanece pendente. Resultados fornecidos pelo operador; nenhum comando
+Docker, teste, deploy ou inspeção de banco/backup/segredos foi reexecutado
+pelo Codex neste fechamento. Histórico da falha inicial e evidências em
+[STATUS](STATUS.md#validação-operacional-da-etapa-008).
+
+Os comandos a seguir são referências para futuras implantações/revalidações
+pelo operador, no diretório oficial. Preservar
+o .env atual, binding/portas, volumes e nome do projeto. Não repetir bootstrap.
+Não publicar HTTP no campus nem implementar HTTPS/kiosk nesta etapa.
+Inspecionar containers/volumes e confirmar binding efetivo 127.0.0.1:8080
+sem interferir em outros projetos. Executar:
+
+```bash
+cd /home/administrador/digital-signage
+git diff --check
+git status --short
+sudo docker compose config --quiet
+sudo docker compose build
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+```
+
+Se build/suíte falharem, não implantar. Antes de `up`, providenciar backup
+conjunto apropriado do SQLite consistente, mídias e .env fora do Git, com
+acesso restrito, conforme OPERATIONS. O backup da 007 não substitui backup
+atual. Não afirmar restauração validada a partir da existência de backup.
+Somente após os testes e backup:
+
+```bash
+sudo docker compose up -d
+sudo docker compose ps
+sudo docker compose logs --tail=100 signage-app
+```
+
+Confirmar imagem 008, healthy, inicialização sem erros, UID/GID 10001,
+volumes existentes, tabelas novas e FKs. `create_all` adiciona
+screen_pairing_codes, screen_device_sessions, device_activation_challenges e
+device_activation_limits; preserva os modelos/dados anteriores. A comparação
+estática normalizada do Compose confirmou somente mudança da tag; isso não
+inspeciona o daemon ou comprova binding efetivo.
+
+No computador do operador, manter o túnel:
+
+```bash
+ssh -N -L 18080:127.0.0.1:8080 administrador@10.4.254.202
+```
+
+Usar `http://localhost:18080/admin/login` no perfil administrativo e
+`http://localhost:18080/device/activate` em perfil separado, sempre no mesmo
+hostname para os respectivos cookies. Seguir os 24 itens de
+[OPERATIONS](OPERATIONS.md#checklist-oficial-008--24-itens), inclusive mídia
+real e persistência por restart/force-recreate. Nunca executar down -v.
+Registrar novas saídas reais de pytest, duração/warnings/falhas, logs e origem
+das evidências em STATUS. Confirmar manualmente os detalhes ainda indicados
+na matriz, especialmente CSRF de emissão, cookies e Range do dispositivo.
+A homologação confirmada se restringe ao HTTP local por túnel SSH, sem
+HTTPS institucional, instalação física BTV13/H6+ ou Chromium kiosk. Sem
+armazenamento offline; revogação não elimina bytes já transferidos. Não há
+liberação institucional ampla nem início ou conclusão da ETAPA 009.
+
 Execute no diretório oficial /home/administrador/digital-signage.
 Docker e Docker Compose devem estar disponíveis; o usuário operacional utiliza
 sudo, com autenticação realizada no próprio terminal. A configuração real usa .env não versionado, conforme .env.example.
@@ -291,10 +370,12 @@ recriação sem apagar volumes. Registrar saída real do pytest, duração,
 falhas/warnings e novas evidências operacionais em STATUS. O resultado real da
 ETAPA 007 é 439 passed; os 267 da ETAPA 006 permanecem históricos.
 
-Nenhuma reprodução em TV Box pode ser alegada: player, credenciais de
-dispositivos e agendamento não foram implementados. Sem liberação
+Nenhuma reprodução em TV Box pode ser alegada. Na entrega 007 não havia
+player ou credenciais de dispositivos; a 008 tem homologação funcional local
+conforme o início deste documento. Agendamento continua futuro. Sem liberação
 institucional ampla; permanecem HTTPS válido, Secure=true,
-LOCAL_AUTH_TEST_MODE=false, revisão de políticas e autenticação futura
-específica e limitada dos dispositivos. Player web, integração/validação real
-com BTV13 e H6+, restauração conjunta formal, auditoria e recuperação
-administrativa permanecem futuros. Nenhuma ETAPA 008 iniciada aqui.
+LOCAL_AUTH_TEST_MODE=false, revisão de políticas e validação institucional da
+identidade limitada de dispositivos implementada na 008. Player homologado
+funcionalmente no navegador local, com limites descritos acima;
+integração real BTV13/H6+, restauração conjunta formal, auditoria e recuperação
+administrativa permanecem futuras. Esse fechamento histórico não iniciou a 008.

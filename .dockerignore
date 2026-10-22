@@ -13,8 +13,10 @@
 !app/templates/admin/media/
 !app/templates/admin/auth/
 !app/templates/admin/playlists/
+!app/templates/player/
 !app/templates/**/*.html
 !app/static/
 !app/static/*.css
+!app/static/*.js
 !tests/
 !tests/**/*.py

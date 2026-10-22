@@ -13,13 +13,16 @@ from app.config import get_auth_settings
 from app.database import Base, engine
 from app.models import utc_now
 from app.routes.admin.auth import router as auth_router
+from app.routes.admin.device import router as admin_device_router
+from app.routes.device import router as device_router
+from app.routes.player import router as player_router
 from app.routes.admin.playlists import router as admin_playlists_router
 from app.routes.admin.screens import router as admin_router
 from app.routes.admin.media import render_form as render_media_form, router as admin_media_router
 from app.routes.media import router as media_router
 from app.routes.screens import router
 from app.security import AuthMiddleware, denied
-from app.services.auth import dummy_hash
+from app.services.auth import AuthError, dummy_hash
 
 
 @asynccontextmanager
@@ -40,6 +43,9 @@ app.include_router(admin_router)
 app.include_router(admin_media_router)
 app.include_router(admin_playlists_router)
 app.include_router(media_router)
+app.include_router(admin_device_router)
+app.include_router(device_router)
+app.include_router(player_router)
 app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent / "static"), name="static")
 
 
@@ -53,6 +59,11 @@ async def restricted_access(request, exc):
 @app.exception_handler(SQLAlchemyError)
 async def database_unavailable(request, exc):
     return denied(request, 503, "Administração temporariamente indisponível.")
+
+
+@app.exception_handler(AuthError)
+async def credential_error(request, exc):
+    return denied(request, exc.status_code, str(exc))
 
 
 @app.exception_handler(RequestValidationError)

@@ -50,6 +50,44 @@ Diretório:
 
 ## Estado do projeto
 
+A ETAPA 008 está implementada, com **build, regressão completa, implantação e
+homologação funcional no navegador confirmados pelo operador** no ambiente
+HTTP local por túnel SSH. Acrescenta player em `/player/s/{slug}`,
+manifesto e mídia restritos por tela, prévia administrativa e pareamento em
+`/device/activate`. O painel oferece **Player / Pareamento** em cada tela.
+O código de uso único expira em 10 minutos; a sessão de dispositivo, separada
+da conta administrativa, dura 90 dias e pode ser revogada. Imagens usam sua
+duração por item; vídeos são mudos e avançam por `ended`; atualizações são
+consultadas a cada 20–22 segundos e aplicadas na transição. Estado inativo ou
+recusa de autorização limpa a mídia na próxima verificação.
+
+O operador executou a suíte em container: **555 passed, 1 warning de
+depreciação Starlette/AnyIO em 821.67 segundos, zero falhas**. O caso corrigido
+de cookie contendo hash passou individualmente; as cinco parametrizações da
+função também passaram. Imagem
+`digital-signage:etapa008` construída, container healthy após recriação,
+`/health` HTTP 200, logs sem erros, FKs iguais a 1 e quatro tabelas de
+pareamento/dispositivos confirmados pelo operador, além de reprodução real,
+isolamento, revogação e persistência. Histórico da falha inicial/correção e
+resultados em [STATUS](docs/STATUS.md#validação-operacional-da-etapa-008).
+
+O Codex havia executado separadamente 13 testes JavaScript com DOM/relógio
+simulados, sem navegador ou decodificação de MP4; nesta atualização apenas
+registra as evidências, sem reexecutar testes ou operações do operador.
+Os [24 itens oficiais](docs/OPERATIONS.md#evidências-por-item-do-checklist-008)
+distinguem manual e automatizado; CSRF de emissão, propriedades de cookies e
+Range do dispositivo aguardam confirmação manual específica, sem declaração
+de 24/24 manuais. Expiração com relógio simulado e falhas artificiais de mídia
+são evidências automatizadas.
+
+Binding exclusivo `127.0.0.1:8080`, acesso somente pelo túnel SSH, sem liberação
+institucional ampla. Backup pré-implantação confirmado, restauração conjunta
+formal pendente. Kiosk, TV Boxes físicas, HTTPS institucional e armazenamento
+offline de mídias continuam fora desta entrega. Revogação não elimina bytes
+já transferidos. Este fechamento não inicia nem conclui a ETAPA 009.
+
+Os registros abaixo descrevem o histórico das etapas anteriores.
+
 A ETAPA 003 adiciona SQLite via SQLAlchemy 2.x e cadastro de telas por API,
 com criação, listagem, consulta e atualização parcial em `/api/screens`.
 `DATABASE_URL` usa por padrão `sqlite:////app/data/signage.db`, persistido em
@@ -135,8 +173,9 @@ permanece pendente. Resultados fornecidos pelo operador, sem execução ou
 reexecução pelo Codex nesta atualização documental; evidências e histórico do
 bloqueio sudo em [STATUS](docs/STATUS.md#validação-operacional-da-etapa-007).
 A etapa entrega somente configuração e associação, sem reprodução nas TVs.
-Player web, integração/validação real com BTV13 e H6+, autenticação limitada
-dos dispositivos e agendamento não foram implementados. HTTPS institucional
+Na ETAPA 007 não havia player nem autenticação de dispositivos; a homologação
+funcional local da 008 está descrita acima. Integração/validação real com BTV13 e
+H6+ e agendamento continuam futuros. HTTPS institucional
 permanece necessário antes da disponibilização do painel na rede.
 
 Cookies usam Secure, HttpOnly, SameSite=Lax e Path=/ por padrão, sem Domain.

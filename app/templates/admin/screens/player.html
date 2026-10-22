@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Player / Pareamento{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><h1>Player de {{ screen.name }}</h1><p>Tela {{ 'ativa' if screen.active else 'inativa' }}</p></div></div>
+  <div class="form-panel">
+    <p>{% if expiration %}Dispositivo pareado. Validade absoluta até {{ expiration }} UTC.{% else %}Nenhum dispositivo com sessão válida.{% endif %}</p>
+    <p>O código é de uso único e expira em 10 minutos. Gerar outro código invalida o anterior;
+      o dispositivo atual continua autorizado até a nova ativação ser concluída.
+      A nova ativação substitui o acesso anterior. O cookie do dispositivo dura até 90 dias.</p>
+    <p>No segundo perfil de navegador, abra <a href="{{ url_for('device_activate') }}">Ativar dispositivo</a> e digite o código.
+      Use somente o acesso local pelo túnel SSH configurado pelo operador.</p>
+    {% if code %}
+      <div class="notice success" role="status">
+        <p>Código exibido somente nesta resposta. Não compartilhe em URLs, logs ou relatórios.</p>
+        <p><strong id="pairing-code">{{ code }}</strong></p>
+        <p>Abra novamente esta página pelo link abaixo para remover o código da visualização.
+          Reenviar este formulário gera outro código.</p>
+      </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin_screen_pairing', screen_id=screen.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+      <button class="button" type="submit" {% if not screen.active %}disabled{% endif %}>Gerar novo código</button>
+    </form>
+    <p><a href="{{ url_for('player_page', slug=screen.slug) }}" target="_blank" rel="noopener noreferrer">Abrir prévia do player</a>
+      — usa sua sessão administrativa e não pareia dispositivo. F11 pode ativar tela cheia no computador.</p>
+    <form method="post" action="{{ url_for('admin_screen_revoke', screen_id=screen.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ request.state.auth.csrf_token }}">
+      <div class="field">
+        <label for="confirm">Confirmar revogação</label>
+        <select id="confirm" name="confirm" required>
+          <option value="">Selecione para confirmar</option>
+          <option value="revoke">Revogar dispositivo desta tela e código pendente</option>
+        </select>
+      </div>
+      <button class="button secondary" type="submit">Revogar acesso</button>
+    </form>
+    <p><a href="{{ url_for('admin_screen_player', screen_id=screen.id) }}">Consultar estado sem código</a> ·
+      <a href="{{ url_for('admin_screens') }}">Voltar para telas</a></p>
+  </div>
+{% endblock %}

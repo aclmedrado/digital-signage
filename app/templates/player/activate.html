@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Ativar dispositivo | Digital Signage</title>
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Ativar dispositivo</h1>
+    <div class="form-panel">
+      <p>Digite o código temporário fornecido pelo administrador. Não é necessário informar usuário ou senha.</p>
+      {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+      <form method="post" action="/device/activate">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <div class="field">
+          <label for="code">Código de ativação</label>
+          <input id="code" type="text" name="code" required maxlength="128" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <p class="field-help">Expira em 10 minutos e só pode ser usado uma vez. Espaços e hífens são opcionais.</p>
+        </div>
+        <button class="button" type="submit">Ativar</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

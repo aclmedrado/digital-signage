@@ -14,6 +14,10 @@ router = APIRouter(prefix="/media")
 def media_file(media_id: int, session: Session = Depends(get_session),
                settings: MediaSettings = Depends(get_media_settings)):
     asset = session.get(MediaAsset, media_id)
+    return asset_response(asset, settings)
+
+
+def asset_response(asset, settings):
     path = stored_path(asset, settings) if asset is not None else None
     if path is None:
         raise HTTPException(status_code=404, detail="Mídia não encontrada")

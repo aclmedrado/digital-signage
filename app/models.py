@@ -141,3 +141,42 @@ class ScreenPlaylistAssignment(Base):
     playlist_id: Mapped[int] = mapped_column(ForeignKey("playlists.id"), index=True)
     assigned_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class ScreenPairingCode(Base):
+    __tablename__ = "screen_pairing_codes"
+    __table_args__ = (CheckConstraint("expires_at > created_at", name="pairing_expiry"),)
+
+    screen_id: Mapped[int] = mapped_column(ForeignKey("screens.id"), primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class ScreenDeviceSession(Base):
+    __tablename__ = "screen_device_sessions"
+    __table_args__ = (CheckConstraint("expires_at > created_at", name="device_expiry"),)
+
+    screen_id: Mapped[int] = mapped_column(ForeignKey("screens.id"), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class DeviceActivationChallenge(Base):
+    __tablename__ = "device_activation_challenges"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    csrf_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class DeviceActivationLimit(Base):
+    __tablename__ = "device_activation_limits"
+    __table_args__ = (CheckConstraint("failures >= 0", name="activation_failures"),)
+
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failures: Mapped[int]
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)

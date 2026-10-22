@@ -1,5 +1,13 @@
 # Arquitetura
 
+Estado atual: player e pareamento da ETAPA 008 implementados no repositório,
+com build, regressão completa, implantação e homologação funcional no navegador
+confirmados pelo operador no ambiente HTTP local por túnel SSH. O alcance de
+cada evidência está em [OPERATIONS](OPERATIONS.md#evidências-por-item-do-checklist-008);
+não se declara 24/24 manuais nem liberação institucional ampla.
+As seções 002–007 são históricas; não constituem resultados da suíte ou da
+implantação 008.
+
 ## Visão geral
 
 O Digital Signage será composto inicialmente por dois elementos principais:
@@ -104,10 +112,10 @@ As rotas JSON existentes, /health e seu healthcheck foram preservados.
 SQLite, DATABASE_URL, esquema, volume signage-data e usuário não-root não
 mudaram. Jinja2 e python-multipart são instalados somente na imagem; o
 .dockerignore inclui os templates e o CSS no contexto de build. A imagem
-dessa etapa era digital-signage:etapa004; digital-signage:etapa006 foi
-construída e validada operacionalmente pelo operador. A imagem atual
-digital-signage:etapa007 também foi construída e validada operacionalmente
-pelo operador, conforme registro da ETAPA 007 abaixo.
+dessa etapa era digital-signage:etapa004; digital-signage:etapa006 e
+digital-signage:etapa007 também foram construídas e validadas operacionalmente
+pelo operador. A imagem atual é digital-signage:etapa008, conforme registro
+da ETAPA 008 abaixo.
 
 Na ETAPA 004 não havia autenticação ou autorização na interface nem na API.
 O uso naquela fase era restrito ao ambiente interno controlado, sem exposição
@@ -404,11 +412,140 @@ registrou esses resultados, sem reexecutar testes ou operações e sem acessar
 backup, credenciais, sessões ou banco real nesta atualização documental.
 Evidências em [STATUS](STATUS.md#validação-operacional-da-etapa-007).
 
-Player web, integração/validação real com BTV13 e H6+ e autenticação específica
-e limitada dos dispositivos permanecem futuros. HTTPS institucional é
+No fechamento da ETAPA 007, player e identidade de dispositivos permaneciam
+futuros; a implementação 008 está descrita abaixo. Integração/validação real
+com BTV13 e H6+ permanece futura. HTTPS institucional é
 necessário antes de disponibilizar o painel na rede; auditoria, recuperação
 administrativa e demais controles documentados permanecem pendentes.
-Nenhuma ETAPA 008 iniciada; não há declaração de TVs reproduzindo playlists.
+Esse fechamento não iniciou a ETAPA 008 nem comprovou reprodução em TVs.
+
+## Implementação da ETAPA 008
+
+Conforme ADR 0008 e prompt versionados, adicionam-se somente quatro tabelas:
+`screen_pairing_codes` e `screen_device_sessions`, ambas com `screen_id` PK/FK,
+hash único SHA-256 e datas de criação/expiração; a primeira tem também FK do
+administrador emissor. CHECKs exigem expiração posterior à emissão. As tabelas
+`device_activation_challenges` (hashes de cookie/CSRF independentes) e
+`device_activation_limits` (origem em hash, contador não negativo e expiração)
+isolam a ativação do login. Expirações e FKs do emissor têm índices; hashes
+únicos têm índice de unicidade SQLite. `create_all` permanece incremental.
+Nenhuma coluna ou dado anterior é migrado/destruído.
+
+`app/services/device_auth.py` usa CSPRNG: 16 bytes em Base32 canônico (26
+caracteres, apresentação em grupos) para código e 32 bytes em token URL-safe
+para cookie de sessão. Aceita somente ASCII, caixa indiferente, espaços ASCII
+e hífens opcionais; não reduz entropia nem aceita hash como credencial.
+Prazos fixos: código e desafio 600 s, sessão 90 dias, sem renovação silenciosa.
+Emissão, ativação, desafio e revogação usam sessão própria e BEGIN IMMEDIATE
+antes de ler/validar, commit único e rollback em falha. Reemissão troca somente
+o código; consumo remove o código e substitui a sessão na mesma transação.
+Revogação exclui sessão e código daquela tela. Erros SQL não revelam parâmetros.
+Tela inativa não pode emitir/consumir código.
+
+Ativação anônima recebe cookie/CSRF próprios, independentes de LoginChallenge.
+Corpo POST urlencoded tem teto de 2 KiB, dois campos únicos e nenhuma reflexão
+do código. Desafio é consumido inclusive em código inválido ou 429. Até 10
+códigos inválidos por origem em janela de 15 minutos; a tentativa seguinte,
+inclusive válida, é recusada com 429 até expirar. Sucessos não gastam orçamento.
+Origem vem de `request.client`, sem interpretar headers encaminhados. Limpeza
+de expirados remove até 100 registros por tabela/operação; não há quota global.
+
+Administração: GET `/admin/screens/{id}/player`; POST `.../player/pairing`
+(código exibido uma vez em resposta 200, exceção consciente ao PRG) e
+POST `.../player/revoke` (confirmação explícita, 303). Todas exigem sessão
+admin e CSRF existentes. GET nunca recupera código emitido. Prévia usa sessão
+admin sem emitir cookie de dispositivo; não renova inatividade por polling.
+
+Dispositivo: GET/POST `/device/activate`; após consumo válido, cookie persistente
+e 303 para `/player/s/{slug}`. GET da página, `/manifest` e `/media/{id}`
+revalidam administrador ativo ou sessão da própria tela. Slug é localizador.
+Ausência de cookie ou formato inválido, inclusive hash bruto, resulta em
+redirecionamento à ativação somente no HTML; manifesto/mídia retornam 401.
+Cookie com formato válido, mas desconhecido/alterado, sessão expirada/revogada
+ou de outra tela resulta em 403 genérico. Viewer não autoriza prévia.
+Tela inativa pode obter HTML/manifesto neutro, com itens vazios, mas não mídia;
+reativação permite retomar enquanto a sessão absoluta permanecer válida.
+
+`app/services/player.py` lê tela/vínculo/playlist/itens/mídias em um SELECT
+ordenado por posição/id. Manifesto distingue `playing`, `screen_inactive`,
+`no_playlist` e `playlist_unavailable`; estados neutros não têm URLs de mídia.
+Hash SHA-256 determinístico inclui identidade, estado, versões, vínculo,
+playlist, ordem, duração e metadados, preservando repetições por id do item.
+Somente slug/nome da tela, estado, revisão, intervalo e itens são enviados.
+O guard de mídia confere tela ativa, playlist ativa, vínculo e pertinência
+atual em cada GET/Range. `MediaAsset` não tem campo active; não se adicionou
+coluna: disponibilidade segue a programação e existência do arquivo.
+`asset_response`, extraído da rota anterior, reaproveita stored_path/FileResponse,
+MIME validado, confinamento UUID e Range 206/416/400. HEAD não é habilitado.
+O endpoint antigo `/media/{id}/file` continua exclusivamente administrativo.
+
+AuthMiddleware mantém a política administrativa e acrescenta transporte e
+headers para a ativação exata e o namespace `/player/`; autorização das três
+rotas concretas está no serviço, com negação em cada handler. Cookies novos
+usam AuthSettings e o mesmo transporte aprovado, sem variável/modo adicional.
+`__Host-signage-device` e `__Host-signage-activation` em HTTPS; nomes
+`signage-local-*` no teste local existente. HttpOnly, Lax, Path=/, sem Domain,
+Max-Age compatível com o servidor. Respostas novas têm private/no-store;
+admin mantém no-store. CSP com script/connect self somente no HTML de player;
+admin/ativação mantêm script none. Nenhum token em JS, URL ou armazenamento web.
+
+Player nativo HTML/CSS/JS, sem dependências: uma imagem ou vídeo por vez,
+contain, fundo escuro, sem navegação, vídeo muted/autoplay/playsinline.
+Imagem conta após load; vídeo saudável termina exclusivamente em ended.
+Polling único após cada resposta em 20–22 s (mais latência); timeout de fetch
+10 s, backoff de rede 40–120 s com jitter até 2 s. Revisão normal fica pendente
+até transição; estado neutro ou 401/403/404 limpa imediatamente quando recebido.
+Rede indisponível limpa conteúdo, sem promessa offline. Falhas de mídia avançam
+após 2 s; sequência toda defeituosa espera 20 s. Timeout de carregamento 30 s;
+watchdog de vídeo sem progresso 45 s, amostrado a cada 5 s, ignora aba oculta.
+Limpa src, listeners e timers; pagehide encerra e pageshow de bfcache recarrega.
+Não pré-carrega a playlist inteira nem usa service worker/localStorage.
+
+Compose muda apenas tag 007 → 008; .dockerignore inclui templates do player
+e JS. Sem dependências, serviço, volumes, binding, portas ou infraestrutura
+novos na implementação. O operador confirmou imagem `digital-signage:etapa008`
+construída, container `digital-signage-app` healthy após recriação, GET
+`/health` HTTP 200, inicialização sem erros nos logs e binding exclusivo
+`127.0.0.1:8080` com acesso pelo navegador via túnel SSH. Confirmou ainda
+`PRAGMA foreign_keys` igual a 1 e existência das quatro tabelas de
+pareamento/dispositivos descritas acima, além de persistência após restart
+e force-recreate.
+
+A suíte completa em container, executada pelo operador após a correção da
+expectativa do teste de cookie contendo hash, teve **555 passed, 1 warning de
+depreciação Starlette/AnyIO em 821.67 segundos, zero falhas**. O caso corrigido
+passou individualmente, assim como as cinco parametrizações. O histórico da
+falha inicial (554 passed, 1 failed em 821.81 s) e sua correção permanece em
+[STATUS](STATUS.md#investigação-do-pytest--cookie-contendo-hash).
+Os 13 testes Node executados anteriormente pelo Codex usam DOM/relógio
+simulados; são evidência de lógica e não homologação de browser ou codecs.
+
+Na homologação real, o operador confirmou pareamento/reprodução, imagens
+temporizadas e repetidas, MP4 mudo/integral, loop, atualização automática,
+troca de playlist após vídeo, isolamento entre telas, bloqueio administrativo,
+revogação/substituição de sessão, prévia sem cookie de dispositivo,
+estado neutro, recuperação de rede e persistência. Janela estreita/F11 e
+retorno de aba em segundo plano funcionaram sem duplicação aparente de
+timers/requisições. A [matriz oficial](OPERATIONS.md#evidências-por-item-do-checklist-008)
+separa essas observações das verificações automatizadas: CSRF de emissão,
+propriedades de cookies e Range 206/416 aguardam confirmação manual específica;
+expiração de código e falhas artificiais de mídia têm evidência automatizada.
+As propriedades técnicas acima descrevem a implementação, sem atribuir saídas
+HTTP ou atributos de cookies a medições manuais não informadas.
+
+Backup pré-implantação informado pelo operador:
+`/home/administrador/signage-backups/before-008-20261016-171852`, contendo SQLite
+consistente, mídias e `.env` fora do repositório. Restauração conjunta formal
+permanece pendente. O Codex apenas registra esses resultados neste fechamento,
+sem reexecutar testes/operações nem acessar banco real, backup ou segredos.
+
+O ambiente permanece HTTP local acessível somente por túnel SSH, sem HTTPS
+institucional, integração física BTV13/H6+ ou Chromium kiosk. Não há
+armazenamento offline de mídias; recuperação de rede não comprova reprodução
+offline. Revogação não elimina bytes já transferidos. Este fechamento não
+altera a arquitetura, não libera uso institucional amplo nem inicia ou conclui
+a ETAPA 009. Relatório completo em
+[STATUS](STATUS.md#validação-operacional-da-etapa-008).
 
 ## TV Box
 
@@ -418,9 +555,9 @@ A TV Box deverá executar Chromium ou navegador compatível em modo kiosk.
 
 O player deverá acessar uma URL fornecida pelo servidor.
 
-Exemplo futuro:
-
-http://SERVIDOR/player/recepcao
+Rota implementada: `/player/s/{slug}`, por cookie da tela após ativação.
+Acesso nesta etapa somente no teste local por túnel SSH; acesso físico na
+LAN depende de HTTPS institucional em etapa posterior.
 
 ## Princípio arquitetural
 

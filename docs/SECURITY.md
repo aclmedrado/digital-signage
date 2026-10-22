@@ -1,5 +1,85 @@
 # Segurança
 
+## Player e dispositivos — ETAPA 008 (homologação funcional local)
+
+Implementação, build, regressão completa, implantação e homologação funcional
+no navegador confirmados pelo operador no ambiente HTTP local por túnel SSH.
+Não há liberação institucional ampla nem publicação de HTTP na LAN. O modo
+local e AuthSettings da ETAPA 006 permanecem os da implementação; neste
+fechamento não houve alteração de .env, binding, proxy ou infraestrutura.
+Cookies de dispositivo jamais autorizam `/admin/**`, `/api/screens` ou
+`/media/{id}/file`. Administrador ativo pode fazer prévia sem se parear.
+Viewer não equivale a administrador. Cada requisição de manifesto/mídia
+exige sessão da própria tela; compartilhar playlist não compartilha autorização.
+
+Código: CSPRNG de 128 bits, Base32 ASCII, caixa indiferente, espaços ASCII e
+hífens opcionais, hash SHA-256 em repouso, 10 minutos, uso único. POST admin
+com CSRF mostra o código somente na resposta 200/no-store; GET não recupera.
+Novo código preserva dispositivo atual até o consumo transacional bem-sucedido.
+Sessão opaca de 256 bits, somente hash no SQLite, 90 dias absolutos, persistente
+e revogável/substituível. Cookies HttpOnly/SameSite=Lax/Path=/, sem Domain,
+Secure e prefixo __Host- em HTTPS; nomes distintos no teste local existente.
+Sem tokens em URLs, JS, localStorage ou logs. Revogação com confirmação e CSRF
+remove sessão e código da tela, sem afetar outras.
+
+Ativação tem desafio CSRF próprio (cookie e CSRF de 256 bits com hashes,
+10 minutos, consumo atômico), separado do login. Corpo POST limitado a 2 KiB,
+campos únicos, sem refletir segredo. Até 10 códigos inválidos por origem real
+em 15 minutos; posteriores recebem 429 genérico, inclusive código válido até
+expiração. Não lê X-Forwarded-For arbitrário. Contadores são persistentes e
+independentes do login; sucessos não incrementam. BEGIN IMMEDIATE serializa
+emissão/consumo/revogação; SQL indisponível causa recusa genérica/rollback.
+
+Mídia exige vínculo atual, tela/playlist ativas e item presente; arquivo deve
+existir em caminho UUID confinado. MediaAsset não possui flag active; não há
+mudança no seu esquema. Range é autorizado a cada GET, HEAD não foi habilitado.
+Manifesto não contém caminhos físicos nem credenciais. Respostas têm
+private/no-store e nosniff. CSP de script/connect self é específica do HTML do
+player, sem unsafe-inline/eval; política admin/ativação mantém script none.
+Polling de 20–22 s mais latência significa que revogação/desativação é percebida
+na próxima verificação; bytes já recebidos não podem ser revogados retroativamente.
+Falhas de rede limpam a mídia; não há garantia offline, DRM ou atestação.
+
+O operador confirmou imagem `digital-signage:etapa008` construída, container
+healthy após recriação, `/health` HTTP 200, logs de inicialização sem erros,
+binding exclusivo `127.0.0.1:8080`, acesso pelo navegador via túnel SSH,
+FKs iguais a 1 e quatro tabelas de pareamento/dispositivos. Suíte em container
+executada pelo operador: **555 passed, 1 warning de depreciação Starlette/AnyIO
+em 821.67 segundos, zero falhas**. O caso corrigido de cookie contendo hash
+e as cinco parametrizações passaram separadamente; histórico em
+[STATUS](STATUS.md#investigação-do-pytest--cookie-contendo-hash).
+
+Manualmente, o operador confirmou isolamento entre TVs, recusa de página/
+manifesto/mídia da outra tela, bloqueio administrativo do dispositivo,
+revogação sem afetar outras TVs, novo pareamento invalidando sessão antiga,
+reemissão e invalidação do código anterior, código inválido recusado, prévia
+sem cookie de dispositivo e persistência após restart/recriação, além da
+reprodução e recuperação de rede. Não foram informadas saídas HTTP manuais
+individuais para esses cenários.
+
+Os 13 testes JS anteriores do Codex usam DOM/relógio simulados; falhas
+artificiais de mídia são evidências automatizadas. Expiração do código em
+10 minutos é coberta em Python com relógio simulado. Emissão com CSRF e código
+ausente no GET, atributos do cookie de dispositivo e Range 206/100 bytes e 416
+têm cobertura Python aprovada, mas aguardam confirmação manual identificada.
+As propriedades técnicas descritas acima são contratos da implementação;
+não são novas medições manuais de cookies/HTTP. A
+[matriz dos 24 itens](OPERATIONS.md#evidências-por-item-do-checklist-008)
+discrimina a origem e os detalhes sem confirmação; não se declara 24/24 manuais.
+
+Backup pré-implantação confirmado pelo operador em
+`/home/administrador/signage-backups/before-008-20261016-171852`, com SQLite
+consistente, mídias e `.env` fora do repositório, sem restauração conjunta
+formal. Nenhum resultado foi reexecutado pelo Codex neste fechamento e não
+houve acesso a banco real, backup, credenciais, cookies ou `.env`.
+Não se infere suporte físico BTV13/H6+, Chromium kiosk ou HTTPS institucional.
+Não há armazenamento offline de mídias; revogação não elimina bytes já
+transferidos. O acesso permanece somente pelo túnel SSH no HTTP local.
+Limitação de tentativas/desafios não resolve DoS ou quotas globais; backup
+contém dados sensíveis. HTTPS institucional, restauração conjunta, MFA,
+recuperação administrativa e auditoria continuam pendentes.
+Este fechamento não inicia nem conclui a ETAPA 009.
+
 ## Segurança administrativa — ETAPA 006
 
 Implementada conforme ADR 0006 e validada operacionalmente pelo operador
@@ -109,7 +189,8 @@ O backup anterior à ETAPA 007 foi confirmado pelo operador, incluindo SQLite
 consistente, mídias e .env fora do repositório. Restauração conjunta formal
 continua sem teste; backups contêm hashes de senha, segredos CSRF e configuração
 sensível e devem ter acesso restrito.
-Compatibilidade e autorização específica de TV Boxes continuam pendentes.
+Compatibilidade física de TV Boxes continua pendente; a identidade limitada
+de dispositivo implementada na 008 está descrita no início deste documento.
 
 ## Playlists e associações — ETAPA 007
 
@@ -145,7 +226,8 @@ operador. Na engine implantada, o operador confirmou
 ausência de pytest pelo Codex na implementação inicial permanecem históricos
 em STATUS.
 
-Não há novas APIs anônimas, manifesto, player, credenciais de dispositivos,
+Na entrega 007 não havia manifesto, player ou credenciais de dispositivos;
+a implementação 008 está descrita no início deste documento. Não há
 agendamento ou compartilhamento de cookies administrativos com TV Boxes.
 O operador confirmou binding de teste 127.0.0.1:8080 com túnel SSH, volumes
 preservados e persistência após restart/recriação. O Codex não alterou binding,
@@ -156,9 +238,10 @@ revisão de políticas e autenticação específica dos futuros players.
 O backup anterior à implantação está registrado em OPERATIONS e STATUS;
 nenhum conteúdo do backup ou .env foi acessado pelo Codex. O teste formal de
 restauração conjunta, MFA, recuperação administrativa e auditoria de operações
-permanecem pendentes. Player web, integração/validação real com BTV13 e H6+
-e autenticação específica e limitada dos dispositivos permanecem futuros.
-Não há declaração de TVs reproduzindo playlists nem início da ETAPA 008.
+permanecem pendentes. Player web e credenciais limitadas foram implementados
+na 008, com homologação funcional local nos limites descritos acima;
+integração real BTV13/H6+ permanece futura.
+Esse registro histórico não comprova reprodução em TVs ou homologação da 008.
 
 ## Biblioteca de mídias — ETAPA 005
 

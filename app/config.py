@@ -75,6 +75,14 @@ class AuthSettings:
     def challenge_cookie_name(self):
         return "__Host-signage-login" if self.session_cookie_secure else "signage-local-login"
 
+    @property
+    def device_cookie_name(self):
+        return "__Host-signage-device" if self.session_cookie_secure else "signage-local-device"
+
+    @property
+    def activation_cookie_name(self):
+        return "__Host-signage-activation" if self.session_cookie_secure else "signage-local-activation"
+
 
 def get_auth_settings():
     def boolean(name, default):

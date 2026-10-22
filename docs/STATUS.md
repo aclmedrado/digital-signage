@@ -1,8 +1,40 @@
 # Status do projeto
 
-Última atualização: 2026-10-15
+Última atualização: 2026-10-22
 
 ## Fase atual
+
+**ETAPA 008 implementada, com build, regressão completa, implantação e
+homologação funcional no navegador confirmados pelo operador no ambiente
+HTTP local por túnel SSH.** Player web, manifesto por tela, mídia restrita à
+programação e pareamento revogável estão disponíveis. Resultado final informado
+pelo operador: **555 passed, 1 warning de depreciação Starlette/AnyIO em
+821.67 segundos, zero falhas**. O caso corrigido
+`test_invalid_device_cookie_denies_every_request[hash]` passou individualmente;
+as cinco parametrizações da função também passaram. O histórico de
+**554 passed, 1 failed, 1 warning em 821.81 s** e da correção da expectativa
+permanece em [Investigação do teste](#investigação-do-pytest--cookie-contendo-hash).
+
+Imagem `digital-signage:etapa008` construída, container `digital-signage-app`
+healthy após recriação, GET `/health` HTTP 200 e logs de inicialização sem
+erros, conforme o operador. Binding exclusivo `127.0.0.1:8080`, acesso pelo
+túnel SSH, `PRAGMA foreign_keys` igual a 1 e quatro tabelas de
+pareamento/dispositivos existentes também confirmados pelo operador.
+
+Os 13 testes JavaScript executados anteriormente pelo Codex usam DOM/relógio
+simulados; não são homologação de navegador real. Nesta atualização o Codex
+apenas registra as evidências e verifica documentação/Git, sem reexecutar
+testes ou operações do operador. Os 24 itens oficiais estão confrontados
+individualmente em [OPERATIONS](OPERATIONS.md#evidências-por-item-do-checklist-008),
+distinguindo manual, Python e JS simulado. CSRF/exibição única do código,
+propriedades de cookies e Range do dispositivo têm cobertura automatizada,
+mas aguardam confirmação manual identificada; **não se declara 24/24 manuais**.
+Expiração de código com relógio simulado e falhas artificiais de mídia são
+evidências automatizadas. Fechamento e limites em
+[Validação operacional da ETAPA 008](#validação-operacional-da-etapa-008).
+
+Os resultados e limitações das etapas anteriores abaixo são históricos;
+não representam execução de regressão ou homologação da 008.
 
 ETAPA 003 concluída e validada operacionalmente pelo operador: testes em
 container, API, permissões e persistência SQLite confirmados com sucesso.
@@ -138,15 +170,22 @@ permanecem no histórico. Evidências consolidadas em
 - novas páginas HTML protegidas e navegação Telas/Mídias/Playlists;
 - testes de playlists e regressão da suíte completa aprovados pelo operador:
   439 passed; validação manual de configuração/associação: 20/20 aprovados.
+- player HTML/CSS/JS, manifesto determinístico e mídia restrita por tela;
+- códigos de uso único, sessões opacas de dispositivo e CSRF de ativação;
+- limites persistentes separados do login e transações de pareamento/revogação;
+- área administrativa Player / Pareamento e prévia sem cookie de dispositivo;
+- regressão Python completa da 008 aprovada pelo operador: 555 passed;
+  13 testes Node de lógica aprovados anteriormente pelo Codex com DOM/relógio
+  simulados, separados da homologação funcional real no navegador;
+- build/implantação 008, integridade referencial e persistência confirmados
+  pelo operador; evidências dos 24 itens classificadas em OPERATIONS.
 
 ## Ainda não implementado
 
 - HTTPS institucional e configuração operacional de transporte seguro;
 - MFA, recuperação de conta e auditoria completa (fora da ETAPA 006);
 - ingestão/exibição segura de SVG;
-- player web;
 - integração e validação real com BTV13 e H6+;
-- autenticação específica e limitada dos dispositivos;
 - Chromium kiosk;
 - agendamento;
 - grupos de telas;
@@ -183,21 +222,25 @@ Operações administrativas do Docker devem utilizar `sudo`.
 
 ## Próximo passo recomendado
 
-Auditar o fechamento documental da ETAPA 007. Permanecem o teste formal de
-restauração conjunta de SQLite e mídias, o planejamento futuro de player web,
-integração/validação real com BTV13 e H6+ e autenticação específica e limitada
-dos dispositivos. A ETAPA 008 não foi iniciada nesta atualização.
+Auditar o diff da ETAPA 008 e preparar seu versionamento pelo operador.
+Build, regressão completa, implantação e homologação funcional foram
+confirmados; não precisam ser tratados como pendências gerais. Complementar
+as evidências manuais dos itens 3, 8 e 18 e dos detalhes assinalados no
+[checklist oficial](OPERATIONS.md#evidências-por-item-do-checklist-008), sem
+transformar cobertura automatizada em aprovação manual. Planejar o teste
+formal de restauração conjunta em ambiente isolado autorizado.
+Não iniciar a ETAPA 009, HTTPS ou kiosk neste fechamento documental.
 
 Antes de disponibilizar o painel na rede institucional: HTTPS com certificado
 válido, SESSION_COOKIE_SECURE=true,
 LOCAL_AUTH_TEST_MODE=false, revisão das políticas de acesso e definição de
-autenticação específica para os futuros players das TV Boxes. O backup
+política operacional e homologação da identidade limitada dos players. O backup
 anterior à implantação foi criado pelo operador; a restauração conjunta deve
 ser ensaiada em ambiente isolado autorizado, sem evidência de teste formal
 neste fechamento. MFA, recuperação administrativa
 e auditoria de operações permanecem trabalhos futuros conforme decisões
 existentes. Compatibilidade com TV Boxes ainda exige validação específica.
-Nenhuma etapa posterior à ETAPA 007 foi iniciada nesta atualização documental.
+Os registros 002–007 abaixo preservam suas conclusões históricas.
 
 ## Registro da ETAPA 002
 
@@ -1715,3 +1758,410 @@ Alterações de implementação preexistentes no working tree preservadas.
 Nenhuma alteração funcional, de Python, testes, banco, Dockerfile, compose.yaml,
 .env, credenciais/sessões ou configurações globais nesta atualização.
 Nenhum git add, git commit ou git push executado.
+
+## Registro da ETAPA 008
+
+Implementação no repositório em **2026-10-16**, sem conclusão operacional.
+Este registro preserva o estado da implementação inicial; suas pendências
+foram posteriormente confrontadas com as evidências do operador em
+[Validação operacional da ETAPA 008](#validação-operacional-da-etapa-008).
+
+### Pré-condições e diferenças observadas
+
+`pwd`: /home/administrador/digital-signage; branch main; HEAD inicial e final
+`9661c9f` (docs: add stage 008 implementation prompt). Working tree inicial
+limpa e referência local origin/main alinhada. git diff --check inicial sem
+erros. ADR 0008 e docs/prompts/etapa008.md confirmados versionados antes das
+alterações. AGENTS, README, STATUS, ARCHITECTURE, SECURITY, OPERATIONS,
+DEPLOYMENT, ADRs 0001–0008 e prompt 008 lidos integralmente; contratos, templates,
+testes e arquivos envolvidos inspecionados antes de editar.
+
+Premissas compatíveis com o código. MediaAsset não tem active: disponibilidade
+é definida por tela/playlist ativas, vínculo, item e arquivo existente, sem
+ALTER. ADR 0008 continua com seu status textual Proposto; implementação foi
+solicitada explicitamente após seu versionamento, sem editar ADR/prompt.
+Nenhuma mudança arquitetural destrutiva necessária. As dependências Python
+da aplicação/pytest não estão no host; nenhuma foi instalada para testar.
+Sudo/Docker operacional reservados ao operador conforme o contrato da etapa;
+não houve tentativa de sudo ou de contornar o bloqueio histórico.
+
+### Arquivos novos (14)
+
+- app/routes/admin/device.py;
+- app/routes/device.py;
+- app/routes/player.py;
+- app/services/device_auth.py;
+- app/services/player.py;
+- app/static/player.css;
+- app/static/player.js;
+- app/templates/admin/screens/player.html;
+- app/templates/player/activate.html;
+- app/templates/player/index.html;
+- tests/player_helpers.py;
+- tests/player_state.test.js;
+- tests/test_device_auth.py;
+- tests/test_player.py.
+
+### Arquivos alterados (15)
+
+- .dockerignore, compose.yaml;
+- app/config.py, app/main.py, app/models.py, app/security.py;
+- app/routes/media.py, app/templates/admin/screens/list.html;
+- tests/test_auth.py;
+- README.md, docs/ARCHITECTURE.md, docs/DEPLOYMENT.md, docs/OPERATIONS.md,
+  docs/SECURITY.md e docs/STATUS.md.
+
+### Decisões de implementação e segurança
+
+Quatro tabelas novas via create_all: screen_pairing_codes (PK/FK tela, hash
+único, FK emissor, emissão/expiração), screen_device_sessions (PK/FK tela,
+hash único, emissão/expiração), device_activation_challenges (PK hash do
+cookie, hash CSRF e datas), device_activation_limits (PK hash da origem,
+contador não negativo e expiração indexada). CHECKs de validade nos códigos
+e sessões. Modelos e dados anteriores preservados; sem migração destrutiva.
+
+Código com secrets.token_bytes(16), Base32 canônico com 128 bits, grupos
+legíveis; normalização ASCII de caixa, espaços e hífens, sem reduzir entropia.
+Cookie/CSRF de desafio e token de dispositivo com secrets.token_urlsafe(32),
+256 bits cada; persistem somente hashes SHA-256. Código e desafio duram
+10 min; sessão dura 90 dias absolutos, sem touch/renovação por polling.
+Cookies selecionados pelo AuthSettings existente: Secure e prefixo __Host-
+em HTTPS; nomes signage-local-* no teste isolado já aprovado; HttpOnly/Lax,
+Path=/, sem Domain e Max-Age coerente. Nenhum segredo em URL/JS/localStorage.
+
+Emissão/consumo/revogação/desafios usam BEGIN IMMEDIATE em sessão própria,
+commit único e rollback genérico em falhas SQL. Emissão substitui somente
+código pendente; consumo substitui sessão anterior e elimina código na mesma
+transação. Revogação com confirmação exclui sessão e código somente da tela.
+Ativação tem CSRF próprio, não intercambiável com login; corpo urlencoded
+limitado a 2 KiB e dois campos únicos, sem reflexão de código em erros.
+Limite persistente separado: 10 códigos inválidos/origem real em 15 min;
+seguintes recebem 429 até expirar, inclusive códigos corretos. Desafio é
+consumido também em falha/429, sucessos não incrementam orçamento. Limpezas
+limitadas a 100 expirados por tabela/operação, sem quota global ou job.
+
+Rotas implementadas: GET /admin/screens/{id}/player, POST .../pairing e
+.../revoke; GET/POST /device/activate; GET /player/s/{slug}, .../manifest e
+.../media/{id}. Admin continua protegido pelo middleware e CSRF anteriores.
+Alteração sensível mínima em AuthMiddleware: aplica transporte/headers também
+à ativação exata e namespace /player/, preservando a classificação e autenticação
+administrativas. Cada rota de conteúdo chama autorização específica, admin
+ativo ou dispositivo da mesma tela. Dispositivo não autoriza admin/API/mídia
+antiga; viewer não autoriza prévia. Prévia não emite cookie de dispositivo.
+GET anônimo de HTML orienta à ativação; JSON/mídia negam sem conteúdo público.
+
+Manifesto usa um SELECT ordenado e hash determinístico de estado, vínculo,
+playlist, sequência e metadados relevantes; inclui repetições por id do item.
+Estados neutros sem URLs: screen_inactive, no_playlist, playlist_unavailable.
+Tela inativa conserva sessão para manifesto neutro, sem mídia. Guard de mídia
+revalida programação atual a cada GET/Range. Extração de asset_response mantém
+stored_path/FileResponse, MIME e Range; não amplia autorização da rota antiga.
+HEAD não é habilitado. Cache private/no-store nas rotas novas, no-store admin;
+nosniff e CSP. Somente HTML de player recebe script/connect self, sem inline/eval.
+Admin/ativação mantêm script none. Referrer-Policy no-referrer acrescentada.
+
+Player próprio sem dependências: fullscreen visual, contain, fundo escuro,
+imagens cronometradas após load, vídeos muted/autoplay/playsinline até ended,
+loop e revisão pendente aplicada na transição. Uma mídia e um polling por vez,
+20–22 s mais latência; fetch com timeout 10 s. Recusa/desativação limpa mídia
+quando observada, rede falha limpa e usa backoff 40–120 s + jitter até 2 s.
+Falhas avançam após 2 s; sequência toda falhando espera 20 s. Load timeout 30 s,
+watchdog sem progresso 45 s com amostragem 5 s e tolerância a aba oculta.
+Limpa src/listeners/timers; trata retorno de bfcache. Sem cache offline.
+
+Compose muda somente imagem 007 → 008; .dockerignore inclui HTML/JS novos.
+Dockerfile, dependências, UID/GID 10001, serviço, portas, binding, volumes,
+healthcheck e proxy permanecem preservados. Nenhuma inspeção do daemon inferida
+a partir da configuração normalizada.
+
+### Testes definidos versus realmente executados
+
+**Python definidos, não coletados/executados:** 43 funções novas com estimativa
+AST de 116 casos (56 de dispositivo, 60 de player). Cobertura: admin/CSRF,
+papéis/sessões, CSPRNG/hashes, códigos inválidos/expirados/reemitidos/únicos,
+pré-sessão independente, limites/expiração/concorrência, substituição/revogação,
+cookies HTTPS/local, isolamento de telas/admin, manifesto/revisão/estados,
+Range 206/416/400, arquivos ausentes/caminhos, FKs/constraints, persistência em
+inicializações isoladas, falhas SQL/rollback, headers e regressão.
+Os testes anteriores não foram removidos/relaxados; comparação AST confirmou
+as funções intactas, exceto expectativa legítima de quatro tabelas adicionais
+no teste de esquema de autenticação. Os 439 passed anteriores são históricos;
+não se declara total coletado ou aprovação da suíte 008.
+
+**Realmente executados:** `node tests/player_state.test.js`, última execução
+registrada: **13 testes aprovados, 0 falhas, 0 skips, 0 warnings, 82.062083 ms**.
+São testes da lógica com DOM, fetch e relógio simulados: imagens/load/duração,
+vídeo/ended/muted, loop/repetição, revisão em transição, 401/403/404,
+desativação/reativação, sequência defeituosa, play rejeitado/listeners antigos,
+rede/recuperação, polling sem sobreposição/pagehide, watchdog e URL externa.
+Não são testes de browser, autoplay real, H.264 ou TV Box. Execuções anteriores
+da mesma suíte também passaram; não se somam execuções como casos diferentes.
+
+**Pytest nesta sessão: 0 coletados, 0 executados; falhas/warnings runtime
+Python não avaliados.** Sem FastAPI/SQLAlchemy/pytest no host; nada instalado.
+Sem build, up, restart, force-recreate, bootstrap, consultas reais ou logs reais.
+
+### Verificações estáticas/locais efetivas
+
+- AST dos 39 arquivos Python: aprovado, sem importar a aplicação;
+- compilação dos 15 templates HTML Jinja2: aprovada;
+- seis renderizações fictícias dos três templates novos com StrictUndefined
+  e escape: aprovadas, sem FastAPI/TestClient;
+- node --check do player JS: aprovado;
+- docker compose --env-file /dev/null config --quiet: aprovado, sem daemon/.env;
+- comparação Compose normalizado com HEAD: somente tag, demais campos iguais;
+- AST dos modelos anteriores e comparação dos serviços auth/upload/playlists,
+  login, banco, API, dependências, Dockerfile e documentos normativos: intactos;
+- revisão de diff/arquivos novos, git diff --check e whitespace individual
+  dos 14 arquivos não rastreados: aprovados, sem indexação.
+
+Esses controles não comprovam imports, DDL/concorrência executados pelo ORM,
+cookies reais, build, regressão Python, browser, binding efetivo ou operação.
+
+### Problemas, pendências e próximo passo
+
+Limitação principal: suíte Python e ambiente operacional indisponíveis nesta
+sessão; não há aprovação runtime do servidor. Testes JS usam simulação e os
+arquivos dos testes HTTP são sintéticos, sem comprovar decodificação.
+Nenhum erro encontrado nos controles executados; isso não elimina falhas
+detectáveis apenas no build, suíte ou homologação.
+
+Operador deve auditar diff/status, executar config/build/pytest conforme
+DEPLOYMENT, providenciar backup conjunto apropriado de SQLite/mídias/.env
+fora do Git antes de up e conferir imagem 008/healthy/logs/binding/tabelas/FKs.
+Depois homologar os 24 itens de OPERATIONS com dois perfis reais pelo túnel
+SSH em http://localhost:18080, incluindo mídia real, Range e persistência.
+Não executar up se build/pytest falharem. Restauração conjunta formal,
+BTV13/H6+, kiosk e HTTPS institucional continuam pendentes/futuros. Não há
+liberação HTTP para campus. Revogação só atua sobre novas requisições e
+polling; bytes já entregues não podem ser removidos de dispositivo comprometido.
+
+Nenhum git add, commit, push, reset, troca de branch, sudo, bootstrap/login
+real, leitura/alteração de .env, mudança de binding/portas/volumes, firewall,
+SSH, proxy, TLS ou configurações globais. Nenhuma cópia alternativa do projeto
+ou início da ETAPA 009. Working tree final contém somente alterações desta
+implementação, ainda não indexadas; HEAD permanece 9661c9f. O operador orientará
+validação, atualização após homologação e versionamento separadamente.
+
+## Investigação do pytest — cookie contendo hash
+
+Histórico da falha inicial e da correção. As reexecuções posteriores aprovadas
+pelo operador estão em [Validação operacional da ETAPA 008](#validação-operacional-da-etapa-008).
+As pendências no final desta investigação descrevem aquele momento.
+
+Resultados fornecidos pelo operador após a implementação inicial: build
+aprovado, imagem digital-signage:etapa008 construída e suíte com **554 passed,
+1 failed, 1 warning in 821.81s**. Falha:
+`tests/test_player.py::test_invalid_device_cookie_denies_every_request[hash]`.
+Esses resultados não foram executados/reexecutados pelo Codex. O tipo do
+warning não foi informado; não se atribui a ele uma causa não fornecida.
+
+Diretório oficial e branch main confirmados, HEAD 9661c9f. Working tree já
+continha a implementação 008 não indexada; esse estado foi preservado.
+Leituras e inspeções dos contratos, teste, validação de token, middleware,
+ADR 0008 e documentação precederam a alteração.
+
+Causa: token_hash persistido é SHA-256 hexadecimal com 64 caracteres, enquanto
+auth.valid_token exige exatamente 43 caracteres URL-safe. Hash é recusado
+antes de consultar sessão, com AuthError 401. GET /player/s/{slug} converte
+esse 401 em 303 para o endereço fixo /device/activate, sem corpo de player,
+manifesto, URLs de mídia ou cookie autenticado. O destino é formulário público
+mínimo e não recebe slug, hash, código ou token no endereço. ADR 0008 §3.3
+permite orientar navegador sem autenticação à ativação; não exige 401/403 no
+HTML quando o cookie malformado não constitui sessão válida.
+
+Ausência e formato malformado compartilham 401 na autorização; somente HTML
+redireciona. Cookie com formato válido, mas desconhecido/alterado, sessão
+expirada ou revogada resulta em 403. As outras quatro parametrizações mantêm
+43 caracteres e chegavam a esse segundo caminho, por isso passavam. Nenhum
+hash persistido é aceito como token: além da recusa de formato, a consulta de
+sessão usa SHA-256 do token recebido, nunca aceita diretamente o hash bruto.
+Manifesto e mídia chamam autorização antes de obter conteúdo e não convertem
+401/403 em redirecionamento ou reprodução pública.
+
+Correção mínima em tests/test_player.py: somente failure=hash na página HTML
+exige 303, Location exatamente /device/activate e corpo vazio. Para hash em
+manifesto/mídia exige 401; demais parametrizações exigem 403. Recusas não podem
+ter Location. Em todos os casos verifica ausência de Set-Cookie, token refletido,
+items e URLs do player no corpo, preservando a comparação do banco sem escrita.
+Todas as parametrizações foram mantidas; nenhuma implementação/autorização mudou.
+
+Arquivos criados nesta correção: nenhum. Arquivos alterados: tests/test_player.py
+e docs/STATUS.md. Código da aplicação, outros testes, ADR, Docker/Compose,
+.env e infraestrutura permaneceram intactos em relação ao início da investigação.
+
+Verificações locais executadas: AST dos 39 arquivos Python aprovado; controle
+isolado das funções valid_token/token_hash e TOKEN_PATTERN extraídos por AST,
+com biblioteca padrão e dados sintéticos, confirmou 43 versus 64 caracteres,
+ausência e formato inválido. Isso não importa FastAPI/SQLAlchemy nem testa
+HTTP, ORM, cookies reais ou autorização de sessão em execução. git diff --check
+aprovado. Comparação SHA-256 com o início da investigação confirmou os outros
+98 arquivos intactos; comparação AST confirmou somente a função do teste
+alvo alterada e as cinco parametrizações preservadas.
+Dependências pytest/FastAPI/SQLAlchemy continuam ausentes no host;
+zero casos pytest executados/coletados pelo Codex nesta correção. Nenhuma
+instalação, sudo, consulta ao banco real, acesso a logs reais ou deploy.
+
+Reexecução reservada ao operador, no diretório oficial. É preciso reconstruir
+a imagem porque Dockerfile copia os testes; executar run na imagem anterior
+repetiria a expectativa antiga. Build não é deploy:
+
+```bash
+sudo docker compose build
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider 'tests/test_player.py::test_invalid_device_cookie_denies_every_request[hash]'
+```
+
+Depois, reexecutar as cinco parametrizações e a suíte completa:
+
+```bash
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider tests/test_player.py::test_invalid_device_cookie_denies_every_request
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+```
+
+Pendências: resultado real do teste corrigido e regressão, identificação do
+warning e homologação operacional. Não se declara resolução operacional da
+falha ou conclusão da etapa. Nenhum git add, commit, push, alteração de .env,
+Docker/Compose, binding, portas, volumes, credenciais ou início de nova etapa.
+
+## Validação operacional da ETAPA 008
+
+ETAPA 008 — Player Web e Pareamento Seguro das TVs — implementada, com build,
+regressão completa, implantação e homologação funcional confirmados pelo
+operador no ambiente HTTP local acessível somente por túnel SSH. Registro
+documental em **2026-10-22**, sem atribuir data de execução não informada.
+
+Fonte: relato do operador nesta solicitação de fechamento. Docker, pytest,
+requisições HTTP, inspeção de integridade/backup e homologação real no
+navegador foram executados ou confirmados pelo operador. **O Codex não os
+executou nem reexecutou nesta atualização**, nem acessou banco de produção,
+credenciais, cookies, `.env` ou conteúdo do backup.
+
+### Regressão e correção do teste
+
+Comando da suíte completa executado pelo operador em container:
+
+```bash
+sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider
+```
+
+Resultado final: **555 passed, 1 warning, 821.67 segundos, zero falhas**.
+O warning informado é de depreciação Starlette/AnyIO; nenhuma dependência foi
+alterada neste fechamento. O operador confirmou também aprovação individual
+do caso `test_invalid_device_cookie_denies_every_request[hash]` corrigido e
+das cinco parametrizações da função. Não foram fornecidas durações para
+essas execuções separadas.
+
+Esse resultado sucede a execução inicial de **554 passed, 1 failed, 1 warning
+em 821.81 s** e a correção da expectativa documentada acima. A correção
+anterior alterou somente o teste: hash não equivale a credencial, e a página
+HTML orienta o navegador sem autenticação à ativação. A regressão completa
+posterior resolve a pendência da falha, sem apagar seu histórico.
+
+Separadamente, o Codex havia executado **13 testes JavaScript aprovados** com
+DOM/fetch/relógio simulados. São evidências de lógica, inclusive falhas
+artificiais, sem navegador real ou decodificação de MP4. Não foram
+reexecutados neste fechamento nem somados aos 555 testes Python.
+
+### Build, implantação, integridade e backup
+
+Confirmações do operador:
+
+- imagem `digital-signage:etapa008` construída;
+- container `digital-signage-app` healthy após recriação;
+- GET `/health` retornando HTTP 200;
+- logs de inicialização sem erros;
+- binding exclusivo em `127.0.0.1:8080` e acesso pelo navegador via túnel SSH;
+- `PRAGMA foreign_keys` retornando `1`;
+- quatro tabelas de pareamento/dispositivos existentes: `screen_pairing_codes`,
+  `screen_device_sessions`, `device_activation_challenges` e
+  `device_activation_limits`, conforme esquema da 008;
+- persistência após restart e force-recreate.
+
+Backup anterior à implantação confirmado pelo operador:
+
+`/home/administrador/signage-backups/before-008-20261016-171852`
+
+Inclui SQLite consistente, mídias e configuração `.env` fora do repositório.
+Não se atribui comando ou método de cópia não informado. **O teste formal de
+restauração conjunta permanece pendente**; backup e persistência não o
+substituem. Nenhum conteúdo do backup foi acessado pelo Codex.
+
+### Homologação funcional e checklist oficial
+
+O operador confirmou no navegador real:
+
+- pareamento da TV Piloto e reprodução da playlist; imagens temporizadas,
+  inclusive repetição com durações diferentes, MP4 mudo/integral e loop;
+- atualização de ordem/duração sem atualização manual da página e troca de
+  playlist na transição após o vídeo;
+- isolamento TV Piloto/TV do Pátio, incluindo recusa de página, manifesto e
+  mídia da outra TV; bloqueio de acesso administrativo pelo dispositivo;
+- revogação sem afetar outras TVs, novo pareamento após revogação e novo
+  pareamento invalidando a sessão antiga;
+- reemissão e invalidação do código anterior; recusa de código inválido;
+- prévia administrativa sem emissão de cookie de dispositivo;
+- estado neutro para tela inativa ou sem playlist;
+- recuperação após interrupção de rede e persistência após restart/recriação;
+- janela estreita, F11, aba em segundo plano e retorno sem duplicação
+  aparente de timers ou requisições.
+
+O operador informou que os testes complementares executados tiveram os
+resultados esperados. Essa confirmação geral não identifica saídas HTTP,
+atributos de cookies ou a execução manual de cada subcenário do checklist.
+A [matriz dos 24 itens em OPERATIONS](OPERATIONS.md#evidências-por-item-do-checklist-008)
+é a referência para a situação individual e a origem de cada evidência.
+
+Pontos sem evidência manual suficientemente identificada: emissão com CSRF
+e ausência do código no GET (item 3), propriedades do cookie de dispositivo
+(8) e Range 206/100 bytes e 416 com cookie do dispositivo (18). Esses pontos
+têm cobertura na suíte Python aprovada, sem nova medição manual atribuída ao
+operador. Detalhes dos itens compostos permanecem discriminados na matriz;
+expiração de código de 10 minutos (21) usa relógio simulado em Python;
+arquivo ausente (19) usa Python, e autoplay recusado/sequência defeituosa
+(19) usam JS simulado. Não se declara **24/24 manuais**.
+
+### Limitações e pendências remanescentes
+
+- Sem HTTPS institucional; HTTP local acessível somente por túnel SSH,
+  binding exclusivo `127.0.0.1:8080`, sem liberação institucional ampla.
+- Sem integração física/validação com BTV13/H6+ e sem Chromium kiosk.
+- Sem teste formal de restauração conjunta de SQLite, mídias e configuração.
+- Sem armazenamento offline de mídias; recuperação de rede não comprova
+  reprodução offline.
+- Revogação não elimina bytes já transferidos e é percebida pelo player
+  na próxima verificação; não foi informado tempo manual medido.
+- Confirmações manuais específicas e detalhes de checklist indicados acima;
+  warning conhecido Starlette/AnyIO permanece sem correção nesta atualização.
+- MFA, recuperação administrativa, auditoria de operações e demais controles
+  futuros já documentados permanecem fora deste fechamento.
+
+Não se declara conclusão nem início da ETAPA 009.
+
+### Registro deste fechamento documental
+
+- Arquivos criados no projeto: nenhum.
+- Arquivos alterados: docs/STATUS.md, docs/OPERATIONS.md,
+  docs/ARCHITECTURE.md, docs/DEPLOYMENT.md, docs/SECURITY.md e README.md.
+- Decisões: registrar os resultados e sua origem; preservar falha/correção
+  iniciais; distinguir navegador real de Python/JS simulado; atualizar
+  referências atuais sem apagar o histórico nem ampliar o escopo validado.
+- Verificações do Codex: diff revisado e `git diff --check` aprovado, sem
+  saída e com código 0. Comparação SHA-256 com o início deste fechamento:
+  somente os seis documentos acima alterados, 94 arquivos preservados,
+  nenhum arquivo criado/removido no projeto e índice sem diferenças.
+  `git diff --stat` e `git status --short` conferidos, incluindo alterações
+  preexistentes de implementação. Nenhum teste, build, deploy ou leitura
+  de logs operacionais reexecutado.
+- Problemas: falha inicial de expectativa resolvida conforme reexecuções do
+  operador; warning de depreciação permanece; evidência manual parcial nos
+  itens identificados, sem falha funcional adicional relatada.
+- Pendências: confirmações específicas da matriz, restauração formal e
+  limitações acima.
+- Próximo passo: auditoria do diff, complemento das evidências identificadas
+  e versionamento final pelo operador, sem iniciar nova etapa.
+
+Alterações de implementação preexistentes no working tree preservadas.
+Nenhuma alteração funcional, de Python, JavaScript, testes, Dockerfile,
+Compose ou `.env` neste fechamento. Nenhum acesso ao banco de produção,
+credenciais ou cookies, nenhuma operação de deploy e nenhum `git add`,
+`git commit` ou `git push` realizado.

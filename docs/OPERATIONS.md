@@ -1,5 +1,204 @@
 # Operações
 
+## Homologação funcional — ETAPA 008
+
+Player e pareamento implementados, com build, regressão completa, implantação
+e homologação funcional real no navegador confirmados pelo operador no
+ambiente HTTP local por túnel SSH. Suíte em container executada pelo operador:
+**555 passed, 1 warning de depreciação Starlette/AnyIO em 821.67 segundos,
+zero falhas**, com o comando
+`sudo docker compose run --rm signage-app pytest -q -p no:cacheprovider`.
+O caso corrigido `test_invalid_device_cookie_denies_every_request[hash]` e
+as cinco parametrizações passaram nas execuções separadas do operador.
+Histórico da falha inicial e resultados finais em
+[STATUS](STATUS.md#validação-operacional-da-etapa-008).
+
+Imagem `digital-signage:etapa008`, container `digital-signage-app` healthy
+após recriação, GET `/health` HTTP 200, logs de inicialização sem erros,
+binding exclusivo `127.0.0.1:8080`, acesso via túnel SSH, FKs iguais a 1 e
+quatro tabelas de pareamento/dispositivos confirmados pelo operador.
+Backup pré-implantação: `/home/administrador/signage-backups/before-008-20261016-171852`,
+com SQLite consistente, mídias e `.env` fora do repositório; restauração
+conjunta formal ainda pendente.
+
+O Codex havia executado separadamente 13 testes JS com DOM/relógio simulados;
+não são homologação de navegador real. Nesta atualização documental não
+reexecutou testes ou operações do operador, nem acessou banco real,
+credenciais, cookies ou `.env`. A matriz abaixo distingue evidências manuais,
+Python e JS simulado; não se declara 24/24 manuais.
+
+Para futuras revalidações, seguir
+[DEPLOYMENT](DEPLOYMENT.md#etapa-008--implantação-confirmada-pelo-operador),
+preservando .env/portas/volumes. Não instalar dependências no host nem
+contornar sudo. Node já disponível foi usado apenas na lógica isolada;
+a aplicação não passa a depender de Node.
+Nunca transmitir códigos/cookies em HTTP na LAN. No computador do operador:
+
+```bash
+ssh -N -L 18080:127.0.0.1:8080 administrador@10.4.254.202
+```
+
+Perfil A: `http://localhost:18080/admin/login`; abrir **Telas → Player /
+Pareamento** da tela desejada. Preparar playlist com imagem e MP4 reais.
+Gerar código (10 min, uso único) e digitá-lo no perfil B, separado, em
+`http://localhost:18080/device/activate`. Usar sempre localhost nesses perfis;
+não alternar com IP da LAN. O perfil B não precisa de conta administrativa.
+Para simular outra TV simultaneamente, usar um terceiro perfil separado:
+há um único cookie de dispositivo por perfil/origem e uma sessão por tela.
+
+O código aparece somente na resposta POST; o link **Consultar estado sem
+código** volta ao GET. Reenviar POST gera outro código. Reemissão não derruba
+o dispositivo atual; consumo do novo código o substitui. Revogação exige a
+opção explícita de confirmação e remove também código pendente. Estado da
+sessão e validade são exibidos, sem recuperar código/token. Prévia usa o
+perfil A e sua sessão administrativa (sujeita a inatividade normal); não
+emite cookie de dispositivo.
+
+Player usa contain, fundo escuro e F11 manual opcional. Vídeos são mudos e
+terminam por ended; imagens usam a duração por item. Polling de 20–22 s mais
+latência, sem sobreposição; atualização normal aguarda transição. Estado neutro
+ou recusa 401/403/404 limpa a mídia ao receber a resposta. Falhas de rede
+limpam o conteúdo e usam backoff até 120 s + até 2 s de jitter. Erro de mídia
+pula após 2 s; sequência inteira falhando espera 20 s. Sem cache offline.
+Tela inativa conserva sessão para manifesto neutro e pode retomar ao reativar,
+sem liberar mídia enquanto inativa. Sessão expira em 90 dias absolutos.
+
+### Checklist oficial 008 — 24 itens
+
+Os critérios originais são preservados abaixo. A situação de cada item e de
+seus subcenários está na matriz seguinte; esta lista não declara aprovação
+manual integral.
+
+1. Login e telas/mídias/playlists anteriores intactos.
+2. Área de pareamento da TV Piloto e TV do Pátio acessível ao administrador.
+3. Emissão com CSRF; código não reaparece ao abrir GET.
+4. Reemissão invalida código anterior sem desconectar dispositivo válido.
+5. Página pública de ativação em perfil separado.
+6. Código correto ativa TV Piloto e redireciona ao player.
+7. Reuso/código incorreto recusados genericamente.
+8. Cookie persistente HttpOnly/Lax/Path=/, Secure coerente com o teste local.
+9. Dispositivo não acessa painel, API ou mídia administrativa.
+10. Perfil Piloto não abre página, manifesto ou mídia do Pátio, mesmo compartilhando playlist.
+11. Prévia admin sem cookie de dispositivo.
+12. Imagem pelo tempo configurado, incluindo repetição com duração própria.
+13. MP4 real inicia mudo, termina integralmente e avança.
+14. Último item volta ao primeiro.
+15. Mudança de ordem/duração aplicada na transição.
+16. Troca da playlist aplicada sem interromper vídeo saudável.
+17. Tela inativa/sem playlist exibe estado neutro, sem mídia exposta.
+18. Range com cookie do dispositivo retorna 206/100 bytes; fora do arquivo, 416.
+19. Arquivo ausente, autoplay recusado e sequência defeituosa não produzem loop rápido; desconexão/retorno recuperam manifesto atual.
+20. Revogação interrompe na próxima verificação; outra TV não é afetada.
+21. Novo pareamento substitui sessão antiga; expiração de código de 10 min (testes automatizados com relógio são aceitáveis).
+22. Restart e force-recreate preservam pareamento válido e todos os dados anteriores.
+23. Janela estreita/F11, aba em segundo plano e retorno sem timers/listeners duplicados.
+24. Binding continua 127.0.0.1:8080 e acesso exclusivamente por túnel SSH, sem HTTP na LAN.
+
+### Evidências por item do checklist 008
+
+**M**: teste/observação manual confirmado pelo operador nesta homologação.
+**P**: cobertura Python inspecionada nos testes existentes, cuja suíte
+completa foi executada pelo operador (555 aprovados), sem reexecução pelo
+Codex. **J**: lógica automatizada executada anteriormente pelo Codex nos
+13 testes com DOM/fetch/relógio simulados. P/J não comprovam resultado em
+navegador real. Não foram fornecidas saídas manuais individuais para todos
+os subcenários. A informação geral de que os complementares tiveram os
+resultados esperados não elimina as confirmações específicas abaixo.
+
+| Item | Origem e situação | Evidência e alcance / confirmação remanescente |
+|---|---|---|
+| 1 | P; M parcial | Fluxos administrativos utilizados na homologação; regressão completa de login/telas/mídias/playlists aprovada em Python. Sem registro manual individual de toda a regressão anterior. |
+| 2 | M no fluxo; P | Pareamento da TV Piloto e operação com as duas TVs confirmados. Autorização/acesso à área administrativa cobertos em Python; abertura das duas áreas sem relato manual individual. |
+| 3 | P; manual a confirmar | Emissão com CSRF e código ausente no GET cobertos em Python. Falta confirmação manual específica dessas duas verificações. |
+| 4 | M + P | Reemissão e invalidação do código anterior confirmadas no navegador. Preservação da sessão válida até consumir o novo código coberta em Python, sem relato manual específico desse intervalo. |
+| 5 | M no fluxo; P | Ativação real confirmada pelo pareamento. Acesso público sem sessão administrativa coberto em Python; uso de perfil separado sem registro manual individual. |
+| 6 | M + P | TV Piloto pareada e playlist reproduzida. Redirecionamento coberto em Python; não se atribui código HTTP manual. |
+| 7 | M + P | Código inválido recusado no navegador. Reuso e resposta genérica cobertos em Python, sem confirmação manual específica de reuso. |
+| 8 | P; manual a confirmar | Persistência e atributos do cookie cobertos em Python nos modos HTTPS simulado e HTTP local. Falta inspeção manual identificada de HttpOnly/Lax/Path=/ e Secure do cookie de dispositivo. |
+| 9 | M + P | Bloqueio administrativo do dispositivo confirmado. Painel, API e mídia administrativa individualizados em Python; sem saídas HTTP manuais atribuídas. |
+| 10 | M + P | Página, manifesto e mídia da outra TV inacessíveis, conforme operador. Compartilhamento da mesma playlist coberto em Python; sem confirmação manual específica dessa condição. |
+| 11 | M + P | Prévia administrativa sem emissão de cookie de dispositivo confirmada pelo operador e coberta em Python. |
+| 12 | M + P/J | Imagens temporizadas e mesma imagem repetida com durações diferentes confirmadas no navegador. |
+| 13 | M + J | MP4 real mudo, integral e avanço confirmados no navegador; lógica de `ended` também simulada. |
+| 14 | M + J | Loop contínuo confirmado no navegador; retorno ao primeiro item também simulado. |
+| 15 | M + P/J | Ordem/duração atualizadas sem atualização manual da página. Revisão e aplicação na transição cobertas em Python/JS simulado. |
+| 16 | M + J | Substituição de playlist na transição após o vídeo confirmada no navegador e coberta em JS simulado. |
+| 17 | M + P/J | Tela inativa/sem playlist com estado neutro confirmada no navegador. Ausência de URLs/acesso à mídia em estado neutro coberta em Python. |
+| 18 | P; manual a confirmar | Range 206 com 100 bytes e fora do arquivo 416 cobertos em Python no endpoint do player. Não há saída manual identificada com cookie do dispositivo; resultados administrativos de etapas anteriores não a substituem. |
+| 19 | M parcial + P/J | Interrupção de rede e recuperação confirmadas no navegador. Arquivo ausente coberto em Python; autoplay recusado, sequência defeituosa e prevenção de loop rápido em JS com falhas artificiais. Não se declaram esses últimos como testes manuais. |
+| 20 | M + P/J | Revogação sem afetar outra TV e novo pareamento após revogação confirmados. Interrupção na próxima verificação coberta em JS/recusa em Python; sem tempo manual medido. |
+| 21 | M + P | Novo pareamento invalidou a sessão antiga no navegador. Expiração do código em 10 minutos verificada em Python com relógio simulado, aceito pelo critério; não houve espera manual declarada. |
+| 22 | M + P | Persistência após restart e force-recreate confirmada pelo operador. Preservação dos dados anteriores também coberta em Python isolado, sem inventário manual detalhado informado. |
+| 23 | M + J | Janela estreita, F11, segundo plano e retorno sem duplicação aparente de timers/requisições confirmados. Limpeza de listeners/timers e ausência de sobreposição verificadas na simulação JS; sem contagem instrumental manual informada. |
+| 24 | M operacional | Binding exclusivo `127.0.0.1:8080` e acesso pelo navegador somente via túnel SSH confirmados pelo operador. |
+
+Rastreabilidade da cobertura automatizada existente, sem nova execução:
+
+- Em [tests/test_device_auth.py](../tests/test_device_auth.py):
+  `test_pairing_posts_require_admin_and_csrf`,
+  `test_code_entropy_hash_and_one_response_only`,
+  `test_admin_pairing_get_requires_admin_without_writes`,
+  `test_valid_activation_hash_cookie_and_single_use`,
+  `test_local_cookie_and_no_http_lan_exception`,
+  `test_invalid_codes_are_generic_without_reflection`,
+  `test_reissue_keeps_old_session_until_consumption`,
+  `test_unusable_code_cannot_create_session` (expiração com relógio simulado)
+  e `test_revoke_needs_confirmation_and_only_affects_target`.
+- Em [tests/test_player.py](../tests/test_player.py):
+  `test_same_shared_playlist_does_not_authorize_other_screen`,
+  `test_device_cookie_never_authorizes_admin`,
+  `test_admin_preview_does_not_pair_or_refresh_session`,
+  `test_neutral_states_never_expose_media`,
+  `test_range_revalidated_and_admin_download_stays_private`,
+  `test_media_guard_denies_noncurrent_or_missing_media`,
+  `test_absolute_expiry_not_renewed_and_persists_between_apps` e
+  `test_incremental_schema_preserves_all_previous_data`.
+- Em [tests/player_state.test.js](../tests/player_state.test.js): duração após
+  load, vídeo até ended, loop/repetição, revisão na transição, recusa de
+  autorização, estados neutros, sequência defeituosa, play rejeitado/listeners
+  antigos, rede/recuperação e polling/pagehide. São simulações de lógica.
+
+Permanecem confirmações manuais específicas dos itens 3, 8 e 18 e os detalhes
+sem relato individual indicados nos itens compostos. Não há nova falha
+funcional relatada pelo operador. Sem HTTPS institucional, integração física
+BTV13/H6+, Chromium kiosk, restauração conjunta formal ou armazenamento offline
+de mídias. Revogação não elimina bytes já transferidos. A homologação local
+não libera uso institucional amplo e não conclui nem inicia a ETAPA 009.
+
+### Procedimentos para futuras revalidações da 008
+
+Para confirmar manualmente Range, usar DevTools do perfil B ou cookie jar
+privado fora do Git, sem publicar cookies/códigos. Exemplo no computador do operador, substituindo
+MEDIA_ID por um MP4 da playlist atual com pelo menos 100 bytes:
+
+```bash
+curl --cookie /CAMINHO/PROTEGIDO/device-cookies.txt --noproxy '*' -D - -o /dev/null -H 'Range: bytes=0-99' http://localhost:18080/player/s/tv-piloto/media/MEDIA_ID
+```
+
+Após autorização e inspeção dos dados de teste pelo operador, validar os
+ciclos abaixo e aguardar healthy/conferir logs em cada ciclo:
+
+```bash
+sudo docker compose restart signage-app
+sudo docker compose ps
+sudo docker compose logs --tail=100 signage-app
+# Conferir os dois perfis e os dados antes do próximo ciclo:
+sudo docker compose up -d --force-recreate signage-app
+sudo docker compose ps
+sudo docker compose logs --tail=100 signage-app
+```
+
+Registrar novas evidências dos itens e suas origens, resultado/duração real
+do pytest e warnings em STATUS, sem segredos. Os resultados já informados
+constam acima; comandos desta seção são referências para futuras revalidações,
+sem execução pelo Codex neste fechamento. Restauração conjunta segue pendente.
+Não inferir BTV13/H6+, kiosk, HTTPS ou autorização para publicação na LAN.
+Teste opcional da lógica JS, somente se Node já estiver disponível no ambiente
+de desenvolvimento: `node tests/player_state.test.js`. Usa DOM simulado;
+não substitui os itens manuais de reprodução. Nenhuma dependência JS é instalada.
+
+As seções seguintes preservam o histórico/procedimentos das etapas anteriores.
+
 Execute em /home/administrador/digital-signage, utilizando sudo no terminal.
 
 Estado e logs:
@@ -264,10 +463,16 @@ credenciais, sessões ou banco real nesta atualização documental. O procedimen
 genérico abaixo permanece para backups futuros; não é atribuído ao operador
 como o comando usado para produzir esse backup.
 
+Antes da implantação da ETAPA 008, o operador confirmou novo backup em
+`/home/administrador/signage-backups/before-008-20261016-171852`, com SQLite
+consistente, mídias e `.env` fora do repositório. Não foram informados os
+comandos usados; nenhum conteúdo foi acessado pelo Codex. O ensaio formal de
+restauração conjunta permanece pendente também para esse backup.
+
 Procedimento para futuros backups consistentes, não executado nesta atualização.
 No diretório oficial, inspecione o espaço disponível e reserve uma janela
 sem uploads. A imagem
-da etapa alvo (etapa007 nesta atualização) deve estar construída antes de
+da etapa alvo (atualmente etapa008) deve estar construída antes de
 usar compose run abaixo; build não
 recria o serviço em produção. Pare apenas
 signage-app, confira compose ps e gere um arquivo fora dos volumes, mantendo
@@ -528,7 +733,9 @@ Os itens podem ser repetidos em futuras revalidações. O backup anterior à
 implantação foi criado pelo operador, mas o teste formal de restauração conjunta
 do SQLite e mídias permanece pendente. A ETAPA 007 entrega apenas configuração
 e associação; não há TVs reproduzindo playlists por um player do sistema.
-Player web, integração/validação real com BTV13 e H6+, autenticação específica
-e limitada dos dispositivos, auditoria e recuperação administrativa continuam
-futuros. HTTPS institucional é necessário antes de disponibilizar o painel na
-rede. Nenhuma ETAPA 008 iniciada nesta atualização exclusivamente documental.
+Player web e identidade limitada de dispositivos estão implementados na 008,
+com homologação funcional local confirmada conforme matriz no início deste
+documento. Integração real BTV13/H6+, auditoria e recuperação
+administrativa continuam futuras. HTTPS institucional é necessário antes de disponibilizar o painel na
+rede. O fechamento documental histórico da 007 não iniciou a 008; a
+implementação atual e o alcance das evidências constam no início do documento.
